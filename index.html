@@ -24,6 +24,20 @@
     --r:18px; --rs:12px;
     --safe-b:env(safe-area-inset-bottom,0px);
   }
+  html[data-theme="light"]{
+    /* "Daylight" — same azure/violet/gold identity, light surfaces, dark nav kept. */
+    --bg:#20263a; --bg2:#171c2b;
+    --paper:#f4f6fb; --paper2:#e9edf6; --card:#ffffff; --cardEdge:#e3e8f1;
+    --ink:#1a1e2a; --ink2:#454b5c; --muted:#727a8c; --faint:#a7afc0;
+    --line:#e7ebf3; --line2:#d8dee9;
+    --sh1:0 1px 2px rgba(30,40,70,.05); --sh2:0 12px 34px -10px rgba(30,40,70,.14);
+  }
+  html[data-theme="light"] .pill.free{background:#e3ecfd;color:#2f5bc0}
+  html[data-theme="light"] .pill.paid{background:#efe7fb;color:#6a48c0}
+  html[data-theme="light"] .who-F{background:#e3ecfd;color:#2f5bc0}
+  html[data-theme="light"] .who-C{background:#efe7fb;color:#6a48c0}
+  html[data-theme="light"] .who-S{background:#f6ecd6;color:#8a6a12}
+  html[data-theme="light"] .empty,html[data-theme="light"] .note{background:rgba(30,40,70,.02)}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0}
   body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--paper);
@@ -44,6 +58,8 @@
   .logo:hover{opacity:.9}
   .navspace{flex:1}
   .navdate{font-size:12.5px;color:#7f8aa0;font-variant-numeric:tabular-nums}
+  .themeBtn{margin-left:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#f0b74e;width:34px;height:34px;border-radius:10px;font-size:15px;line-height:1;display:grid;place-items:center;transition:all .15s}
+  .themeBtn:hover{background:rgba(255,255,255,.15)}
   .tabs{max-width:940px;margin:0 auto;padding:0 12px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;border:none;background:none;color:#8992a6;padding:9px 13px 12px;font-size:13.5px;
@@ -126,7 +142,10 @@
   .film{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--cardEdge);
     border-radius:14px;padding:12px 14px;box-shadow:var(--sh1);transition:box-shadow .15s,transform .05s}
   .film.dragging{opacity:.92;box-shadow:var(--sh2);transform:scale(1.01)}
-  .film .rank{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--faint);min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+  .film .rank{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--faint);min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+  .poster{width:44px;height:62px;border-radius:8px;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .poster .pimg{width:100%;height:100%;object-fit:contain;display:block}
+  .poster .pfall{width:100%;height:100%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;font-family:'Fraunces',serif}
   .film .grip{cursor:grab;color:var(--faint);font-size:18px;padding:4px 2px;touch-action:none;user-select:none}
   .film .grip:active{cursor:grabbing}
   .film .body{flex:1;min-width:0}
@@ -205,6 +224,7 @@
     <div class="logo" onclick="go('home')">C<span class="a">&amp;</span>F</div>
     <div class="navspace"></div>
     <div class="navdate" id="navdate"></div>
+    <button id="themeBtn" class="themeBtn" onclick="toggleTheme()" title="Toggle theme">☀</button>
   </div>
   <div class="tabs" id="tabs"></div>
 </div>
@@ -355,6 +375,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="malaysia.geojson.js"></script>
+<script src="posters.js"></script>
 <script>
 /* ---------- storage ---------- */
 const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v))}};
@@ -408,6 +429,15 @@ function go(v){
 }
 window.addEventListener('hashchange',()=>go(location.hash.replace('#','')||'home'));
 
+/* ---------- theme ---------- */
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;DB.set('theme',t);
+  const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',t==='light'?'#20263a':'#0f1117');
+  const btn=document.getElementById('themeBtn');if(btn)btn.textContent=t==='light'?'☾':'☀';
+  setTiles();if(statesLayer)statesLayer.setStyle(stateStyle);
+}
+function toggleTheme(){applyTheme(DB.get('theme','dark')==='light'?'dark':'light');}
+
 /* ---------- home ---------- */
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
@@ -429,6 +459,33 @@ function renderTiles(){
 
 /* ================= MOVIES ================= */
 let mvPick=null,mvTab='t';
+const artInflight=new Set();
+function posterSrc(f){
+  if(window.CF_POSTERS&&CF_POSTERS[f.t])return CF_POSTERS[f.t];
+  const c=DB.get('artcache',{});
+  if(f.t in c)return c[f.t]; // may be null after a failed lookup
+  return undefined; // never looked up
+}
+async function fetchArt(f){
+  if(artInflight.has(f.t))return; artInflight.add(f.t);
+  let img=null;
+  try{
+    if(f.k==='S'){const r=await fetch('https://api.tvmaze.com/singlesearch/shows?q='+encodeURIComponent(f.t));if(r.ok){const j=await r.json();img=j.image&&(j.image.medium||j.image.original)||null;}}
+    if(!img){for(const c of (f.k==='S'?[f.t+' (TV series)',f.t]:[f.t+' (film)',f.t])){
+      const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(c.replace(/ /g,'_')));
+      if(r.ok){const j=await r.json();if(j.type!=='disambiguation'){img=(j.thumbnail&&j.thumbnail.source)||null;if(img)break;}}}}
+  }catch(e){}
+  const cache=DB.get('artcache',{});cache[f.t]=img;DB.set('artcache',cache);
+  if(document.getElementById('v-movies').classList.contains('active'))mvRender();
+}
+function posterCell(f){
+  const src=posterSrc(f);
+  const bg=f.p?platColor(f.p):'#3a4152';
+  if(src)return `<div class="poster" style="background:${bg}"><img class="pimg" loading="lazy" src="${esc(src)}" alt="" onerror="this.remove()"></div>`;
+  if(src===undefined&&!artInflight.has(f.t))fetchArt(f);
+  const ini=f.t.replace(/[^A-Za-z0-9 ]/g,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'★';
+  return `<div class="poster" style="background:linear-gradient(135deg,${bg},${bg}99)"><span class="pfall">${ini}</span></div>`;
+}
 const LANE={t:'Together',f:'Fares',c:'Charlotte'};
 const mvInput=()=>document.getElementById('mv-input');
 function mvAc(){
@@ -471,6 +528,7 @@ function mvRender(){
     if(mvTab==='t')react+=`<button class="btn sm" onclick="mvMove('${f.id}','f')">Fares</button><button class="btn sm" onclick="mvMove('${f.id}','c')">Charlotte</button>`;
     return `<div class="film" data-id="${f.id}">
       <span class="rank">${i+1}</span>
+      ${posterCell(f)}
       <div class="body"><div class="ft">${esc(f.t)}</div>
         <div class="fm">${f.p?`<span class="plat" style="background:${platColor(f.p)}">${esc(f.p)}</span>`:''}${f.y||''}${f.g?' · '+esc(f.g):''}</div></div>
       <div class="acts">${react}
@@ -516,11 +574,16 @@ function wkDel(id){DB.set('events',DB.get('events',[]).filter(x=>x.id!==id));wkR
 /* ================= TRIPS / MAP ================= */
 const TRIPS=[{n:"Melaka weekend",d:"~2h drive · old town, river cruise, food",car:"RM110 / 2 days"},{n:"Cameron Highlands",d:"~3.5h drive · tea farms, cool air, strawberries",car:"RM165 / 3 days"},{n:"Ipoh food trip",d:"~2.5h drive · white coffee, caves, old town",car:"RM110 / 2 days"},{n:"Penang",d:"~4h drive / short flight · street art, hawker heaven",car:"RM165 / 3 days"},{n:"Genting overnight",d:"~1h drive · cable car, cool air, shows",car:"RM55 / day"},{n:"Kuala Selangor fireflies",d:"~1.5h drive · fireflies + seafood dinner",car:"RM55 / day"}];
 const S_KEY='states2',T_KEY='towns';
-let map=null,statesLayer=null,pinLayer=null,mapInited=false;
+let map=null,statesLayer=null,pinLayer=null,mapInited=false,tileLayer=null;
+function tileUrl(){return DB.get('theme','dark')==='light'?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';}
+function setTiles(){if(typeof L==='undefined'||!map)return;if(tileLayer)map.removeLayer(tileLayer);tileLayer=L.tileLayer(tileUrl(),{maxZoom:18,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}).addTo(map);}
 const uStates=()=>DB.get(S_KEY,{});
 const towns=()=>DB.get(T_KEY,[]);
 function stateStyle(f){const on=uStates()[f.properties.name];
-  return on?{color:'#f6cd7f',weight:1.6,fillColor:'#f0b74e',fillOpacity:.5}:{color:'#2f3648',weight:1,fillColor:'#1a1f2e',fillOpacity:.6};}
+  const light=DB.get('theme','dark')==='light';
+  return on?{color:'#e0982e',weight:1.6,fillColor:'#f0b74e',fillOpacity:.5}
+           :light?{color:'#9aa3b5',weight:1,fillColor:'#b9c1d0',fillOpacity:.45}
+                 :{color:'#2f3648',weight:1,fillColor:'#1a1f2e',fillOpacity:.6};}
 function trRender(){
   if(!mapInited)initMap();
   if(map)setTimeout(()=>map.invalidateSize(),90);
@@ -532,7 +595,7 @@ function initMap(){
   const box=document.getElementById('map');
   if(typeof L==='undefined'||!window.MY_STATES){box.innerHTML='<div class="empty" style="margin:0">The map needs internet — open the live link to use it.</div>';mapInited=true;return;}
   map=L.map('map',{scrollWheelZoom:false}).setView([4.2,109.5],5);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  setTiles();
   statesLayer=L.geoJSON(window.MY_STATES,{style:stateStyle,onEachFeature:(f,layer)=>{
     layer.bindTooltip(f.properties.name,{sticky:true});
     layer.on('click',()=>toggleState(f.properties.name));
@@ -665,6 +728,7 @@ function spRender(){
 }
 
 /* ---------- boot ---------- */
+applyTheme(DB.get('theme','dark'));
 document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
 mvInput().addEventListener('input',mvAc);
 mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
