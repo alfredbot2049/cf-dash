@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   :root{
     --bg:#20302b; --bg2:#1a2823;
@@ -157,6 +158,11 @@
   .place.done .ps{color:#4c6b3d}
   .progress{height:10px;background:var(--paper2);border-radius:20px;overflow:hidden;margin-top:8px}
   .progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:20px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+  #map{height:min(64vh,540px);border-radius:14px;margin-top:12px;background:#1a2823;z-index:1}
+  .leaflet-container{font-family:'Inter',sans-serif;background:#1a2823}
+  .leaflet-tooltip{background:var(--bg);border:none;color:#f3ece0;font-weight:600;font-size:12px;box-shadow:var(--sh2)}
+  .leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none}
+  .maptop{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 
   /* cook mode */
   .overlay{position:fixed;inset:0;background:var(--bg);color:#f3ece0;z-index:60;display:none;flex-direction:column;padding:26px calc(26px + env(safe-area-inset-right)) calc(26px + var(--safe-b))}
@@ -247,11 +253,19 @@
 
   <!-- TRIPS -->
   <section class="view" id="v-trips"><div class="pad">
-    <div class="vhead"><h2>Trips &amp; Malaysia Map</h2><div class="sub">Unlock the country, weekend by weekend.</div></div>
+    <div class="vhead"><h2>Malaysia Map</h2><div class="sub">Type any town or city — it pins on the map and unlocks. Tap a state to mark it too.</div></div>
     <div class="card">
-      <div class="row" style="justify-content:space-between"><b id="map-count" class="serif" style="font-size:19px">0 / 0</b><span class="muted" style="font-size:12.5px">tap a place once we've been</span></div>
+      <div class="row">
+        <input id="town-input" placeholder="Type a town / city — e.g. Melaka, Ipoh, Kuah…" style="flex:3 1 240px" autocomplete="off">
+        <button class="btn primary" id="town-btn" onclick="townSearch()">Unlock</button>
+      </div>
+      <div class="maptop" style="margin-top:14px">
+        <b id="map-count" class="serif" style="font-size:19px">0 / 15 states</b>
+        <span class="muted" style="font-size:12.5px"><b id="town-count">0</b> towns pinned</span>
+      </div>
       <div class="progress"><i id="map-bar" style="width:0%"></i></div>
-      <div class="mapgrid" id="map-grid"></div>
+      <div id="map"></div>
+      <div class="chips" id="town-chips" style="margin-top:14px"></div>
     </div>
     <div class="sectitle">Weekend trip ideas · rough car cost</div>
     <div id="trip-ideas"></div>
@@ -318,6 +332,8 @@
   <div class="nav2"><button class="btn" onclick="cmMove(-1)">← Back</button><button class="btn primary" id="cm-next" onclick="cmMove(1)">Next →</button></div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="malaysia.geojson.js"></script>
 <script>
 /* ---------- storage ---------- */
 const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v))}};
@@ -375,7 +391,7 @@ window.addEventListener('hashchange',()=>go(location.hash.replace('#','')||'home
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
  {id:'week',ico:'📅',name:"What's On",desc:'Dated events in KL',color:'var(--gold)',cnt:()=>{const l=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).length;return l?l+' coming up':'nothing yet'}},
- {id:'trips',ico:'🗺️',name:'Trips & Map',desc:'Unlock Malaysia',color:'var(--blue)',cnt:()=>{const d=DB.get('places',{});const n=Object.values(d).filter(Boolean).length;return n+' / 16 unlocked'}},
+ {id:'trips',ico:'🗺️',name:'Trips & Map',desc:'Unlock Malaysia',color:'var(--blue)',cnt:()=>{const n=Object.values(DB.get('states2',{})).filter(Boolean).length;return n+' / 15 states'}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
  {id:'sport',ico:'🏃',name:'Sport',desc:'Move together',color:'var(--plum)',cnt:()=>{const w=DB.get('sport',[]).filter(x=>x.ts>now()-7*864e5).length;return w+' this week'}},
@@ -475,17 +491,72 @@ function wkAdd(){
 }
 function wkDel(id){DB.set('events',DB.get('events',[]).filter(x=>x.id!==id));wkRender();}
 
-/* ================= TRIPS ================= */
-const PLACES=["Kuala Lumpur","Selangor","Melaka","Penang","Perak (Ipoh)","Negeri Sembilan","Pahang (Cameron)","Genting Highlands","Johor","Langkawi","Kedah","Terengganu","Kelantan","Perlis","Sabah","Sarawak"];
+/* ================= TRIPS / MAP ================= */
 const TRIPS=[{n:"Melaka weekend",d:"~2h drive · old town, river cruise, food",car:"RM110 / 2 days"},{n:"Cameron Highlands",d:"~3.5h drive · tea farms, cool air, strawberries",car:"RM165 / 3 days"},{n:"Ipoh food trip",d:"~2.5h drive · white coffee, caves, old town",car:"RM110 / 2 days"},{n:"Penang",d:"~4h drive / short flight · street art, hawker heaven",car:"RM165 / 3 days"},{n:"Genting overnight",d:"~1h drive · cable car, cool air, shows",car:"RM55 / day"},{n:"Kuala Selangor fireflies",d:"~1.5h drive · fireflies + seafood dinner",car:"RM55 / day"}];
+const S_KEY='states2',T_KEY='towns';
+let map=null,statesLayer=null,pinLayer=null,mapInited=false;
+const uStates=()=>DB.get(S_KEY,{});
+const towns=()=>DB.get(T_KEY,[]);
+function stateStyle(f){const on=uStates()[f.properties.name];
+  return on?{color:'#9cd987',weight:1.6,fillColor:'#5f8355',fillOpacity:.55}:{color:'#3d4d46',weight:1,fillColor:'#28352f',fillOpacity:.55};}
 function trRender(){
-  const done=DB.get('places',{}),n=PLACES.filter(p=>done[p]).length;
-  document.getElementById('map-count').textContent=n+' / '+PLACES.length+' unlocked';
-  document.getElementById('map-bar').style.width=Math.round(n/PLACES.length*100)+'%';
-  document.getElementById('map-grid').innerHTML=PLACES.map(p=>`<div class="place ${done[p]?'done':''}" onclick="trToggle('${p.replace(/'/g,"\\'")}')"><div class="pn">${done[p]?'✓ ':''}${esc(p)}</div><div class="ps">${done[p]?'been there':'not yet'}</div></div>`).join('');
+  if(!mapInited)initMap();
+  if(map)setTimeout(()=>map.invalidateSize(),90);
+  if(statesLayer)statesLayer.setStyle(stateStyle);
+  renderPins();updateProgress();
   document.getElementById('trip-ideas').innerHTML=TRIPS.map(t=>`<div class="item"><div class="top"><span class="nm">${esc(t.n)}</span><span class="pill paid" style="margin-left:auto">🚗 ${esc(t.car)}</span></div><div class="meta">${esc(t.d)}</div></div>`).join('');
 }
-function trToggle(p){const d=DB.get('places',{});d[p]=!d[p];DB.set('places',d);trRender();}
+function initMap(){
+  const box=document.getElementById('map');
+  if(typeof L==='undefined'||!window.MY_STATES){box.innerHTML='<div class="empty" style="margin:0">The map needs internet — open the live link to use it.</div>';mapInited=true;return;}
+  map=L.map('map',{scrollWheelZoom:false}).setView([4.2,109.5],5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  statesLayer=L.geoJSON(window.MY_STATES,{style:stateStyle,onEachFeature:(f,layer)=>{
+    layer.bindTooltip(f.properties.name,{sticky:true});
+    layer.on('click',()=>toggleState(f.properties.name));
+  }}).addTo(map);
+  pinLayer=L.layerGroup().addTo(map);
+  try{map.fitBounds(statesLayer.getBounds(),{padding:[8,8]});}catch(e){}
+  mapInited=true;
+}
+function toggleState(name){const s=uStates();s[name]=!s[name];DB.set(S_KEY,s);if(statesLayer)statesLayer.setStyle(stateStyle);updateProgress();}
+function renderPins(){
+  if(pinLayer){pinLayer.clearLayers();
+    towns().forEach(t=>L.circleMarker([t.lat,t.lon],{radius:6,color:'#f0b483',weight:2,fillColor:'#c39a4a',fillOpacity:.95}).bindTooltip(t.name).addTo(pinLayer));}
+  document.getElementById('town-chips').innerHTML=towns().length
+    ? towns().map(t=>`<span class="ptag">📍 ${esc(t.name)}<button onclick="townDel('${t.id}')">×</button></span>`).join('')
+    : '<span class="muted" style="font-size:13px">No towns pinned yet — type one above and hit Unlock.</span>';
+}
+function updateProgress(){
+  const total=window.MY_STATES?window.MY_STATES.features.length:15;
+  const n=Object.values(uStates()).filter(Boolean).length;
+  document.getElementById('map-count').textContent=n+' / '+total+' states';
+  document.getElementById('map-bar').style.width=Math.round(n/total*100)+'%';
+  document.getElementById('town-count').textContent=towns().length;
+}
+async function townSearch(){
+  const q=document.getElementById('town-input').value.trim();if(!q)return;
+  const btn=document.getElementById('town-btn');btn.textContent='…';btn.disabled=true;
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=my&q='+encodeURIComponent(q),{headers:{Accept:'application/json'}});
+    const j=await r.json();
+    if(!j.length){alert('Could not find "'+q+'" in Malaysia. Try a nearby or bigger town name.');}
+    else{
+      const hit=j[0],lat=+hit.lat,lon=+hit.lon;
+      const list=towns();list.push({id:uid(),name:hit.display_name.split(',')[0].trim(),lat,lon,full:hit.display_name});DB.set(T_KEY,list);
+      const st=stateAt(lat,lon);if(st){const s=uStates();s[st]=true;DB.set(S_KEY,s);}
+      document.getElementById('town-input').value='';
+      if(statesLayer)statesLayer.setStyle(stateStyle);renderPins();updateProgress();
+      if(map)map.flyTo([lat,lon],9,{duration:.8});
+    }
+  }catch(e){alert('Search needs internet — open the live link.');}
+  btn.textContent='Unlock';btn.disabled=false;
+}
+function townDel(id){DB.set(T_KEY,towns().filter(t=>t.id!==id));renderPins();}
+function stateAt(lat,lon){for(const f of window.MY_STATES.features){if(pipGeom([lon,lat],f.geometry))return f.properties.name;}return null;}
+function pipGeom(pt,g){if(g.type==='Polygon')return pipPoly(pt,g.coordinates);if(g.type==='MultiPolygon')return g.coordinates.some(p=>pipPoly(pt,p));return false;}
+function pipPoly(pt,rings){if(!pipRing(pt,rings[0]))return false;for(let i=1;i<rings.length;i++)if(pipRing(pt,rings[i]))return false;return true;}
+function pipRing(pt,ring){let x=pt[0],y=pt[1],inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
 
 /* ================= COOKING ================= */
 const SEED=[{id:'seed1',title:"Garlic butter fried rice",steps:["Cook 2 cups rice, let it cool (day-old is best)","Dice 4 garlic cloves and 1 onion","Melt butter, fry garlic + onion till golden","Push aside, scramble 2 eggs","Add rice, soy sauce, a pinch of sugar","Toss on high heat 3 min, finish with spring onion"]}];
