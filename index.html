@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#20302b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>C &amp; F</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#20302b; --bg2:#1a2823;
+    --paper:#f5eee1; --paper2:#ece2cf; --card:#fffdf8; --cardEdge:#ece1cc;
+    --ink:#242019; --ink2:#4a453b; --muted:#938a78; --faint:#b8ad98;
+    --line:#e8dec9; --line2:#ddd0b6;
+    --green:#5f8355; --greenD:#48663f; --terra:#b06a5a; --gold:#c39a4a; --blue:#4f7280; --plum:#8a5f78;
+    --sh1:0 1px 2px rgba(40,30,15,.05); --sh2:0 10px 30px -8px rgba(40,30,15,.14);
+    --r:18px; --rs:12px;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--paper);
+    color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% 8%,rgba(95,131,85,.05),transparent 42%),radial-gradient(circle at 88% 0%,rgba(176,106,90,.05),transparent 40%);}
+  h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer}
+  .wrap{max-width:940px;margin:0 auto;padding:0 18px}
+  ::selection{background:#dfe7d3}
+
+  /* ===== top nav ===== */
+  .nav{position:sticky;top:0;z-index:40;background:var(--bg);color:#f3ece0;
+    box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
+  .nav .bar{max-width:940px;margin:0 auto;padding:0 18px;height:60px;display:flex;align-items:center;gap:14px}
+  .logo{font-family:'Fraunces',serif;font-weight:700;font-size:20px;letter-spacing:.01em;cursor:pointer;
+    display:flex;align-items:center;gap:2px;color:#fff}
+  .logo .a{color:#e0a17f;font-style:italic;padding:0 3px}
+  .logo:hover{opacity:.9}
+  .navspace{flex:1}
+  .navdate{font-size:12.5px;color:#b9c3ac;font-variant-numeric:tabular-nums}
+  .tabs{max-width:940px;margin:0 auto;padding:0 12px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;border:none;background:none;color:#aeb8a2;padding:9px 13px 12px;font-size:13.5px;
+    font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;display:flex;gap:6px;align-items:center}
+  .tab .d{font-size:15px;filter:grayscale(.3) opacity(.8)}
+  .tab.on{color:#fff;border-bottom-color:#e0a17f}
+  .tab.on .d{filter:none}
+
+  /* ===== views ===== */
+  .view{display:none;animation:fade .28s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pad{padding:22px 0 120px}
+
+  .vhead{margin:6px 0 16px}
+  .vhead h2{margin:0;font-size:27px;font-weight:600}
+  .vhead .sub{color:var(--muted);font-size:14px;margin-top:2px}
+
+  /* ===== home ===== */
+  .greet{padding:30px 0 6px}
+  .greet .hi{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .greet h1{margin:6px 0 0;font-size:38px;font-weight:600;line-height:1.05}
+  .greet h1 .a{color:var(--terra);font-style:italic}
+  .greet p{margin:8px 0 0;color:var(--ink2);font-size:15px;max-width:520px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;padding:26px 0 40px}
+  @media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:430px){.grid{grid-template-columns:1fr 1fr;gap:11px}}
+  .tile{position:relative;background:var(--card);border:1px solid var(--cardEdge);border-radius:var(--r);
+    padding:19px 17px 17px;box-shadow:var(--sh1);overflow:hidden;text-align:left;color:inherit;
+    min-height:140px;display:flex;flex-direction:column;transition:transform .16s cubic-bezier(.2,.7,.3,1),box-shadow .16s}
+  .tile:hover{transform:translateY(-4px);box-shadow:var(--sh2)}
+  .tile:active{transform:translateY(-1px) scale(.995)}
+  .tile .glow{position:absolute;inset:0;opacity:.10;background:radial-gradient(circle at 78% 15%,currentColor,transparent 60%);pointer-events:none}
+  .tile .ico{font-size:27px;width:46px;height:46px;display:grid;place-items:center;border-radius:13px;background:var(--paper2)}
+  .tile h3{margin:14px 0 3px;font-size:18px;font-weight:600;font-family:'Inter';letter-spacing:-.01em}
+  .tile p{margin:0;color:var(--muted);font-size:12.5px}
+  .tile .cnt{margin-top:auto;padding-top:12px;font-size:12px;font-weight:600;color:var(--ink2);font-variant-numeric:tabular-nums}
+  .tile .arw{position:absolute;right:15px;bottom:15px;color:var(--faint);font-size:17px;transition:transform .16s}
+  .tile:hover .arw{transform:translateX(3px);color:var(--muted)}
+
+  /* ===== controls ===== */
+  input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink);background:var(--card);
+    border:1px solid var(--line);border-radius:var(--rs);padding:12px 14px;outline:none;width:100%;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(95,131,85,.14)}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  textarea{resize:vertical;min-height:88px}
+  .btn{border:1px solid var(--line2);background:var(--card);border-radius:var(--rs);padding:11px 15px;
+    font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;transition:all .14s}
+  .btn:hover{border-color:var(--muted);transform:translateY(-1px)}
+  .btn:active{transform:none}
+  .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.primary:hover{background:var(--greenD);border-color:var(--greenD)}
+  .btn.sm{padding:6px 10px;font-size:12px;border-radius:9px}
+  .btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .card{background:var(--card);border:1px solid var(--cardEdge);border-radius:var(--r);padding:16px;box-shadow:var(--sh1)}
+  .muted{color:var(--muted)} .tabular{font-variant-numeric:tabular-nums}
+  .sectitle{font-size:11.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin:26px 0 10px;font-weight:700}
+  .pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px;background:var(--paper2);color:var(--ink2)}
+  .pill.free{background:#e5efdd;color:#4c6b3d} .pill.paid{background:#f4e7d3;color:#8a6a2c}
+  .empty{color:var(--muted);text-align:center;padding:34px 16px;font-size:14.5px;border:1.5px dashed var(--line2);border-radius:var(--r);background:rgba(255,255,255,.35)}
+  .empty .big{font-size:30px;display:block;margin-bottom:8px;opacity:.7}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 16px}
+  .chip{border:1px solid var(--line2);background:var(--card);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--muted);transition:all .14s}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* ===== movies ===== */
+  .ac-wrap{position:relative;flex:1 1 280px;min-width:0}
+  .ac-list{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--line2);
+    border-radius:var(--rs);box-shadow:var(--sh2);z-index:30;max-height:320px;overflow:auto;display:none;padding:5px}
+  .ac-list.show{display:block}
+  .ac-item{padding:9px 10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:10px}
+  .ac-item:hover,.ac-item.hl{background:var(--paper2)}
+  .ac-item .nm{font-weight:600;font-size:14px} .ac-item .mt{color:var(--muted);font-size:12px}
+  .subtabs{display:flex;gap:6px;margin:16px 0 14px;flex-wrap:wrap}
+  .subtab{border:1px solid var(--line2);background:var(--card);border-radius:22px;padding:8px 16px;font-size:13.5px;font-weight:600;color:var(--muted);transition:all .14s}
+  .subtab.on{background:var(--terra);border-color:var(--terra);color:#fff}
+  .subtab .n{opacity:.7;font-weight:600;margin-left:3px}
+  .ranklist{display:flex;flex-direction:column;gap:9px}
+  .film{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--cardEdge);
+    border-radius:14px;padding:12px 14px;box-shadow:var(--sh1);transition:box-shadow .15s,transform .05s}
+  .film.dragging{opacity:.92;box-shadow:var(--sh2);transform:scale(1.01)}
+  .film .rank{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--faint);min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+  .film .grip{cursor:grab;color:var(--faint);font-size:18px;padding:4px 2px;touch-action:none;user-select:none}
+  .film .grip:active{cursor:grabbing}
+  .film .body{flex:1;min-width:0}
+  .film .ft{font-weight:600;font-size:15.5px;line-height:1.25}
+  .film .fm{color:var(--muted);font-size:12px;margin-top:3px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .plat{border-radius:6px;font-size:10px;font-weight:700;padding:2px 7px;color:#fff;letter-spacing:.01em}
+  .film .acts{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .xdel{color:var(--faint);background:none;border:none;font-size:17px;line-height:1;padding:3px 5px}
+  .xdel:hover{color:var(--terra)}
+  .ptag{display:inline-flex;align-items:center;gap:5px;background:var(--paper2);border-radius:20px;padding:5px 12px;margin:0 7px 7px 0;font-size:13px;color:var(--ink2)}
+  .ptag button{border:none;background:none;color:var(--muted);font-size:14px}
+
+  /* ===== generic item ===== */
+  .item{background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:14px 15px;margin-bottom:10px;box-shadow:var(--sh1)}
+  .item .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .item .nm{font-weight:600;font-size:15.5px}
+  .item .meta{color:var(--muted);font-size:12.5px;margin-top:4px}
+
+  /* events */
+  .evt{display:flex;gap:14px;background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--sh1)}
+  .evt .date{text-align:center;min-width:50px}
+  .evt .date .d{font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1}
+  .evt .date .m{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .evt .body{flex:1;min-width:0}
+
+  /* map */
+  .mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-top:12px}
+  .place{border:1px solid var(--line2);border-radius:13px;padding:12px 13px;background:var(--card);transition:all .15s}
+  .place.done{background:#e5efdd;border-color:#c2d6b2}
+  .place .pn{font-weight:600;font-size:14px} .place .ps{color:var(--muted);font-size:11.5px;margin-top:2px}
+  .place.done .ps{color:#4c6b3d}
+  .progress{height:10px;background:var(--paper2);border-radius:20px;overflow:hidden;margin-top:8px}
+  .progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:20px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+
+  /* cook mode */
+  .overlay{position:fixed;inset:0;background:var(--bg);color:#f3ece0;z-index:60;display:none;flex-direction:column;padding:26px calc(26px + env(safe-area-inset-right)) calc(26px + var(--safe-b))}
+  .overlay.show{display:flex}
+  .overlay .step-n{font-size:12.5px;text-transform:uppercase;letter-spacing:.11em;color:#a9b39c;font-weight:600}
+  .overlay .step-b{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;
+    font-family:'Fraunces',serif;font-size:clamp(24px,5.5vw,44px);font-weight:500;line-height:1.28;max-width:780px;margin:0 auto}
+  .overlay .dots{display:flex;gap:6px;justify-content:center;margin:10px 0}
+  .overlay .dots i{width:7px;height:7px;border-radius:50%;background:#4a5a51}
+  .overlay .dots i.on{background:#e0a17f}
+  .overlay .nav2{display:flex;gap:12px;justify-content:center}
+  .overlay .nav2 .btn{padding:15px 30px;font-size:16px;background:transparent;color:#f3ece0;border-color:#3e4d45}
+  .overlay .nav2 .btn.primary{background:var(--green);border-color:var(--green)}
+
+  /* stats */
+  .stats{display:flex;gap:11px;flex-wrap:wrap;margin:2px 0 14px}
+  .stat{flex:1 1 120px;background:var(--card);border:1px solid var(--cardEdge);border-radius:var(--r);padding:15px 17px;box-shadow:var(--sh1)}
+  .stat b{font-family:'Fraunces',serif;font-size:27px;font-weight:600;display:block;line-height:1}
+  .stat span{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+  .owe{color:var(--terra)} .settled{color:var(--green)}
+  .whopill{border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px}
+  .who-F{background:#eadfce;color:#7a5c3e} .who-C{background:#ecdde6;color:#8a5f78} .who-S{background:#e5efdd;color:#4c6b3d}
+
+  .note{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.4);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:12px;line-height:1.5}
+  .note b{color:var(--ink2)}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="bar">
+    <div class="logo" onclick="go('home')">C<span class="a">&amp;</span>F</div>
+    <div class="navspace"></div>
+    <div class="navdate" id="navdate"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- HOME -->
+  <section class="view active" id="v-home"><div class="pad">
+    <div class="greet">
+      <div class="hi" id="greet-hi">Hello you two</div>
+      <h1>Charlotte <span class="a">&amp;</span> Fares</h1>
+      <p>Our life, in one place. What we watch, where we go, what we cook, what we owe. Pick a corner.</p>
+    </div>
+    <div class="grid" id="tiles"></div>
+  </div></section>
+
+  <!-- MOVIES -->
+  <section class="view" id="v-movies"><div class="pad">
+    <div class="vhead"><h2>Movies &amp; Shows</h2><div class="sub">Drag to rank. Tag who it's for. ▷ pulls a recap.</div></div>
+    <div class="row" style="align-items:flex-start">
+      <div class="ac-wrap">
+        <input id="mv-input" placeholder="Add a film or show — type to search…" autocomplete="off">
+        <div class="ac-list" id="mv-ac"></div>
+      </div>
+      <select id="mv-lane" style="width:auto"><option value="t">Together</option><option value="f">Fares</option><option value="c">Charlotte</option></select>
+      <button class="btn primary" onclick="mvAdd()">Add</button>
+    </div>
+    <div class="muted" style="font-size:12.5px;margin-top:7px" id="mv-picked"></div>
+    <div class="subtabs" id="mv-subtabs"></div>
+    <div class="ranklist" id="mv-list"></div>
+  </div></section>
+
+  <!-- THIS WEEK -->
+  <section class="view" id="v-week"><div class="pad">
+    <div class="vhead"><h2>What's On</h2><div class="sub">Dated things worth leaving the house for — concerts, shows, one-offs.</div></div>
+    <div class="sectitle">Upcoming</div>
+    <div id="wk-list"></div>
+    <div class="sectitle">Add something on</div>
+    <div class="card">
+      <div class="row">
+        <input id="wk-name" placeholder="What (e.g. Coldplay @ Bukit Jalil, night market pop-up)" style="flex:3 1 220px">
+        <input id="wk-date" type="date" style="flex:1 1 150px">
+      </div>
+      <div class="row" style="margin-top:9px">
+        <input id="wk-note" placeholder="Where / detail / price" style="flex:3 1 220px">
+        <button class="btn primary" onclick="wkAdd()">Add</button>
+      </div>
+    </div>
+    <div class="note" id="wk-note-box"></div>
+    <div class="sectitle">If nothing's on — low-key ideas</div>
+    <div class="chips" id="idea-chips"></div>
+    <div id="idea-list"></div>
+  </div></section>
+
+  <!-- TRIPS -->
+  <section class="view" id="v-trips"><div class="pad">
+    <div class="vhead"><h2>Trips &amp; Malaysia Map</h2><div class="sub">Unlock the country, weekend by weekend.</div></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b id="map-count" class="serif" style="font-size:19px">0 / 0</b><span class="muted" style="font-size:12.5px">tap a place once we've been</span></div>
+      <div class="progress"><i id="map-bar" style="width:0%"></i></div>
+      <div class="mapgrid" id="map-grid"></div>
+    </div>
+    <div class="sectitle">Weekend trip ideas · rough car cost</div>
+    <div id="trip-ideas"></div>
+  </div></section>
+
+  <!-- COOKING -->
+  <section class="view" id="v-cooking"><div class="pad">
+    <div class="vhead"><h2>Cooking</h2><div class="sub">Drop a TikTok, cook it hands-free step by step.</div></div>
+    <div class="card">
+      <div class="row">
+        <input id="ck-link" placeholder="Paste a TikTok / Reels / YouTube link…" style="flex:3 1 240px">
+        <button class="btn primary" onclick="ckLink()">Extract recipe</button>
+      </div>
+      <div class="note"><b>How it works:</b> paste a link and our extractor pulls the ingredients + steps off the video (no typing). Auto-extract runs through the C&amp;F bot once it's wired — for now the link is saved and you can drop in the steps below. </div>
+    </div>
+    <div class="sectitle">Our recipes</div>
+    <div id="cook-list"></div>
+    <div class="sectitle">Add a recipe by hand</div>
+    <div class="card">
+      <input id="ck-title" placeholder="Recipe name" style="margin-bottom:9px">
+      <textarea id="ck-steps" placeholder="One step per line.&#10;Dice the onion and garlic&#10;Fry until golden&#10;Add the rice and stock"></textarea>
+      <div class="row" style="margin-top:9px;justify-content:flex-end"><button class="btn primary" onclick="ckAdd()">Save recipe</button></div>
+    </div>
+  </div></section>
+
+  <!-- BILLS -->
+  <section class="view" id="v-bills"><div class="pad">
+    <div class="vhead"><h2>Bills &amp; Shared Expenses</h2><div class="sub">Who paid, who owes — settled at a glance.</div></div>
+    <div class="stats" id="bill-stats"></div>
+    <div class="card">
+      <div class="row">
+        <input id="bl-label" placeholder="What (Groceries, Grab, Dinner…)" style="flex:2 1 180px">
+        <input id="bl-amt" type="number" inputmode="decimal" placeholder="RM" style="flex:1 1 90px">
+        <select id="bl-who" style="width:auto"><option value="F">Fares paid</option><option value="C">Charlotte paid</option></select>
+        <select id="bl-split" style="width:auto"><option value="S">Split 50/50</option><option value="F">For Fares</option><option value="C">For Charlotte</option></select>
+        <button class="btn primary" onclick="blAdd()">Add</button>
+      </div>
+    </div>
+    <div id="bill-list" style="margin-top:14px"></div>
+  </div></section>
+
+  <!-- SPORT -->
+  <section class="view" id="v-sport"><div class="pad">
+    <div class="vhead"><h2>Sport</h2><div class="sub">Move together, keep the streak alive.</div></div>
+    <div class="stats" id="sp-stats"></div>
+    <div class="card">
+      <div class="row">
+        <input id="sp-act" placeholder="Activity (Gym, Run, Padel, Swim…)" style="flex:2 1 160px">
+        <select id="sp-who" style="width:auto"><option value="S">Both</option><option value="F">Fares</option><option value="C">Charlotte</option></select>
+        <input id="sp-min" type="number" inputmode="numeric" placeholder="min" style="flex:1 1 70px">
+        <button class="btn primary" onclick="spAdd()">Log</button>
+      </div>
+    </div>
+    <div id="sp-list" style="margin-top:14px"></div>
+  </div></section>
+
+</div>
+
+<div class="overlay" id="cookmode">
+  <div class="row" style="justify-content:space-between"><span class="step-n" id="cm-title"></span><button class="btn ghost" style="color:#cdd4c5" onclick="cmClose()">✕ Close</button></div>
+  <div class="step-b" id="cm-body"></div>
+  <div class="dots" id="cm-dots"></div>
+  <div class="step-n" style="text-align:center;margin-bottom:12px" id="cm-count"></div>
+  <div class="nav2"><button class="btn" onclick="cmMove(-1)">← Back</button><button class="btn primary" id="cm-next" onclick="cmMove(1)">Next →</button></div>
+</div>
+
+<script>
+/* ---------- storage ---------- */
+const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v))}};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>(''+s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>+new Date();
+
+/* ---------- generic pointer-based sortable (touch + mouse) ---------- */
+function makeSortable(container,onDrop){
+  container.querySelectorAll('[data-id]').forEach(el=>{
+    const grip=el.querySelector('.grip'); if(!grip)return;
+    grip.onpointerdown=e=>{
+      e.preventDefault();
+      el.classList.add('dragging');
+      const move=ev=>{
+        const sibs=[...container.querySelectorAll('[data-id]:not(.dragging)')];
+        let ref=null;
+        for(const s of sibs){const r=s.getBoundingClientRect();if(ev.clientY<r.top+r.height/2){ref=s;break;}}
+        if(ref)container.insertBefore(el,ref);else container.appendChild(el);
+      };
+      const up=()=>{
+        window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);
+        el.classList.remove('dragging');
+        onDrop([...container.querySelectorAll('[data-id]')].map(x=>x.dataset.id));
+      };
+      window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
+    };
+  });
+}
+
+/* ---------- movie library (offline, no API) ---------- */
+const PC={'Netflix':'#c8362f','HBO Max':'#7b3fb0','Max':'#7b3fb0','Disney+':'#2a4a9c','Prime Video':'#1a8fc4','Apple TV+':'#333','Hulu':'#3aa66a','Viu':'#d99a1e','Cinema':'#8a6b2e','Crunchyroll':'#e08a2e','Peacock':'#333','Paramount+':'#1a6fc4'};
+const platColor=p=>PC[p]||'#938a78';
+const LIB=[
+["House of the Dragon",2022,"S","HBO Max","Fantasy"],["Game of Thrones",2011,"S","HBO Max","Fantasy"],["The Last of Us",2023,"S","HBO Max","Drama"],["Succession",2018,"S","HBO Max","Drama"],["The White Lotus",2021,"S","HBO Max","Drama"],["True Detective",2014,"S","HBO Max","Crime"],["Chernobyl",2019,"S","HBO Max","Drama"],["Euphoria",2019,"S","HBO Max","Drama"],["Severance",2022,"S","Apple TV+","Sci-Fi"],["Ted Lasso",2020,"S","Apple TV+","Comedy"],["The Morning Show",2019,"S","Apple TV+","Drama"],["Silo",2023,"S","Apple TV+","Sci-Fi"],["Foundation",2021,"S","Apple TV+","Sci-Fi"],["For All Mankind",2019,"S","Apple TV+","Sci-Fi"],["Shrinking",2023,"S","Apple TV+","Comedy"],["Slow Horses",2022,"S","Apple TV+","Thriller"],["The Bear",2022,"S","Hulu","Drama"],["Only Murders in the Building",2021,"S","Hulu","Comedy"],["Wednesday",2022,"S","Netflix","Fantasy"],["Stranger Things",2016,"S","Netflix","Sci-Fi"],["Squid Game",2021,"S","Netflix","Thriller"],["Dark",2017,"S","Netflix","Sci-Fi"],["Money Heist",2017,"S","Netflix","Crime"],["Narcos",2015,"S","Netflix","Crime"],["The Crown",2016,"S","Netflix","Drama"],["Bridgerton",2020,"S","Netflix","Romance"],["Emily in Paris",2020,"S","Netflix","Comedy"],["Ozark",2017,"S","Netflix","Crime"],["Black Mirror",2011,"S","Netflix","Sci-Fi"],["The Witcher",2019,"S","Netflix","Fantasy"],["Arcane",2021,"S","Netflix","Animation"],["The Queen's Gambit",2020,"S","Netflix","Drama"],["Lupin",2021,"S","Netflix","Crime"],["Dahmer",2022,"S","Netflix","Crime"],["You",2018,"S","Netflix","Thriller"],["The Sandman",2022,"S","Netflix","Fantasy"],["The Night Agent",2023,"S","Netflix","Thriller"],["Beef",2023,"S","Netflix","Drama"],["The Diplomat",2023,"S","Netflix","Drama"],["3 Body Problem",2024,"S","Netflix","Sci-Fi"],["One Piece",2023,"S","Netflix","Adventure"],["Baby Reindeer",2024,"S","Netflix","Drama"],["Ripley",2024,"S","Netflix","Thriller"],["Peaky Blinders",2013,"S","Netflix","Crime"],["The Boys",2019,"S","Prime Video","Action"],["Fallout",2024,"S","Prime Video","Sci-Fi"],["Reacher",2022,"S","Prime Video","Action"],["Jack Ryan",2018,"S","Prime Video","Thriller"],["The Rings of Power",2022,"S","Prime Video","Fantasy"],["Shogun",2024,"S","Hulu","Drama"],["The Mandalorian",2019,"S","Disney+","Sci-Fi"],["Loki",2021,"S","Disney+","Sci-Fi"],["WandaVision",2021,"S","Disney+","Sci-Fi"],["Andor",2022,"S","Disney+","Sci-Fi"],["Breaking Bad",2008,"S","Netflix","Crime"],["Better Call Saul",2015,"S","Netflix","Crime"],["Fargo",2014,"S","Hulu","Crime"],["Yellowjackets",2021,"S","Paramount+","Thriller"],["Sherlock",2010,"S","Netflix","Crime"],["Fleabag",2016,"S","Prime Video","Comedy"],["Attack on Titan",2013,"S","Crunchyroll","Animation"],["Demon Slayer",2019,"S","Crunchyroll","Animation"],["Jujutsu Kaisen",2020,"S","Crunchyroll","Animation"],["Chainsaw Man",2022,"S","Crunchyroll","Animation"],["Cyberpunk Edgerunners",2022,"S","Netflix","Animation"],["Vinland Saga",2019,"S","Netflix","Animation"],["Dune",2021,"F","Max","Sci-Fi"],["Dune: Part Two",2024,"F","Max","Sci-Fi"],["Oppenheimer",2023,"F","Cinema","Drama"],["Barbie",2023,"F","Max","Comedy"],["The Batman",2022,"F","Max","Action"],["Interstellar",2014,"F","Cinema","Sci-Fi"],["Inception",2010,"F","Netflix","Sci-Fi"],["Tenet",2020,"F","Max","Sci-Fi"],["Parasite",2019,"F","Max","Thriller"],["Everything Everywhere All at Once",2022,"F","Cinema","Sci-Fi"],["Top Gun: Maverick",2022,"F","Paramount+","Action"],["John Wick: Chapter 4",2023,"F","Cinema","Action"],["Mission: Impossible – Dead Reckoning",2023,"F","Paramount+","Action"],["Blade Runner 2049",2017,"F","Cinema","Sci-Fi"],["Killers of the Flower Moon",2023,"F","Apple TV+","Drama"],["Poor Things",2023,"F","Hulu","Drama"],["The Holdovers",2023,"F","Peacock","Comedy"],["Anatomy of a Fall",2023,"F","Cinema","Drama"],["Past Lives",2023,"F","Cinema","Romance"],["Spider-Man: Across the Spider-Verse",2023,"F","Netflix","Animation"],["Guardians of the Galaxy Vol. 3",2023,"F","Disney+","Action"],["Avatar: The Way of Water",2022,"F","Disney+","Sci-Fi"],["La La Land",2016,"F","Cinema","Romance"],["Whiplash",2014,"F","Cinema","Drama"],["The Grand Budapest Hotel",2014,"F","Disney+","Comedy"],["Joker",2019,"F","Max","Drama"],["1917",2019,"F","Cinema","War"],["Nomadland",2020,"F","Hulu","Drama"],["CODA",2021,"F","Apple TV+","Drama"],["Coco",2017,"F","Disney+","Animation"],["Encanto",2021,"F","Disney+","Animation"],["Inside Out 2",2024,"F","Disney+","Animation"],["Soul",2020,"F","Disney+","Animation"],["Spirited Away",2001,"F","Max","Animation"],["Your Name",2016,"F","Cinema","Animation"],["Once Upon a Time in Hollywood",2019,"F","Netflix","Drama"]
+];
+
+/* ---------- router / nav ---------- */
+const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
+const VIEWS=['home',...NAV.map(n=>n.id)];
+function renderTabs(cur){
+  document.getElementById('tabs').innerHTML=NAV.map(n=>`<button class="tab ${cur===n.id?'on':''}" onclick="go('${n.id}')"><span class="d">${n.ico}</span>${n.lbl}</button>`).join('');
+}
+function go(v){
+  if(!VIEWS.includes(v))v='home';
+  VIEWS.forEach(x=>document.getElementById('v-'+x).classList.toggle('active',x===v));
+  renderTabs(v);
+  history.replaceState(null,'','#'+v);
+  window.scrollTo({top:0,behavior:'instant'in window?'instant':'auto'});
+  ({movies:mvRender,week:wkRender,trips:trRender,cooking:ckRender,bills:blRender,sport:spRender,home:renderTiles}[v]||(()=>{}))();
+}
+window.addEventListener('hashchange',()=>go(location.hash.replace('#','')||'home'));
+
+/* ---------- home ---------- */
+const TILES=[
+ {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
+ {id:'week',ico:'📅',name:"What's On",desc:'Dated events in KL',color:'var(--gold)',cnt:()=>{const l=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).length;return l?l+' coming up':'nothing yet'}},
+ {id:'trips',ico:'🗺️',name:'Trips & Map',desc:'Unlock Malaysia',color:'var(--blue)',cnt:()=>{const d=DB.get('places',{});const n=Object.values(d).filter(Boolean).length;return n+' / 16 unlocked'}},
+ {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
+ {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
+ {id:'sport',ico:'🏃',name:'Sport',desc:'Move together',color:'var(--plum)',cnt:()=>{const w=DB.get('sport',[]).filter(x=>x.ts>now()-7*864e5).length;return w+' this week'}},
+];
+function renderTiles(){
+  const h=new Date().getHours();
+  document.getElementById('greet-hi').textContent=h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+  document.getElementById('tiles').innerHTML=TILES.map(t=>{let c='';try{c=t.cnt()}catch(e){}
+    return `<button class="tile" style="color:${t.color}" onclick="go('${t.id}')"><span class="glow"></span>
+      <span class="ico">${t.ico}</span><h3 style="color:var(--ink)">${t.name}</h3><p>${t.desc}</p>
+      <span class="cnt">${c}</span><span class="arw">→</span></button>`;}).join('');
+}
+
+/* ================= MOVIES ================= */
+let mvPick=null,mvTab='t';
+const LANE={t:'Together',f:'Fares',c:'Charlotte'};
+const mvInput=()=>document.getElementById('mv-input');
+function mvAc(){
+  const q=mvInput().value.trim().toLowerCase(),box=document.getElementById('mv-ac');
+  if(q.length<2){box.classList.remove('show');return;}
+  const hits=LIB.filter(m=>m[0].toLowerCase().includes(q)).slice(0,8);
+  if(!hits.length){box.classList.remove('show');return;}
+  box.innerHTML=hits.map(m=>{const i=LIB.indexOf(m);return `<div class="ac-item" onclick="mvSel(${i})"><span class="plat" style="background:${platColor(m[3])}">${m[3]}</span><span class="nm">${esc(m[0])}</span><span class="mt">${m[1]} · ${m[4]} · ${m[2]==='S'?'Series':'Film'}</span></div>`;}).join('');
+  box.classList.add('show');
+}
+function mvSel(i){const m=LIB[i];mvPick={t:m[0],y:m[1],k:m[2],p:m[3],g:m[4]};mvInput().value=m[0];document.getElementById('mv-ac').classList.remove('show');document.getElementById('mv-picked').innerHTML='Picked: <b>'+esc(m[0])+'</b> · '+m[1]+' · '+m[3];}
+function mvAdd(){
+  const raw=mvInput().value.trim();if(!raw)return;
+  const lane=document.getElementById('mv-lane').value;
+  const rec=mvPick&&mvPick.t.toLowerCase()===raw.toLowerCase()?mvPick:{t:raw,y:null,k:null,p:null,g:null};
+  const l=DB.get('movies',[]);l.push({id:uid(),...rec,lane,order:now(),passed:false});DB.set('movies',l);
+  mvInput().value='';mvPick=null;document.getElementById('mv-picked').textContent='';mvTab=lane;mvRender();mvInput().focus();
+}
+function mvMut(id,fn){const l=DB.get('movies',[]);const f=l.find(x=>x.id===id);if(f){fn(f);DB.set('movies',l);mvRender();}}
+function mvMove(id,lane){mvMut(id,f=>{f.lane=lane;f.passed=false;f.order=now();});}
+function mvPass(id){mvMut(id,f=>f.passed=true);}
+function mvDel(id){DB.set('movies',DB.get('movies',[]).filter(x=>x.id!==id));mvRender();}
+function mvRecap(t,k){window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(t+(k==='S'?' latest season recap':' recap')),'_blank');}
+function mvReorder(ids){const l=DB.get('movies',[]);ids.forEach((id,i)=>{const f=l.find(x=>x.id===id);if(f)f.order=i;});DB.set('movies',l);}
+function mvCount(code){return DB.get('movies',[]).filter(x=>code==='passed'?x.passed:(!x.passed&&x.lane===code)).length;}
+function mvRender(){
+  document.getElementById('mv-subtabs').innerHTML=[['t','Together'],['f','Fares'],['c','Charlotte'],['passed','Passed']]
+    .map(([k,l])=>`<button class="subtab ${mvTab===k?'on':''}" onclick="mvTab='${k}';mvRender()">${l}<span class="n">${mvCount(k)}</span></button>`).join('');
+  const box=document.getElementById('mv-list');
+  if(mvTab==='passed'){
+    const p=DB.get('movies',[]).filter(x=>x.passed);
+    box.innerHTML=p.length?('<div>'+p.map(f=>`<span class="ptag">${esc(f.t)}<button onclick="mvMove('${f.id}','t')" title="bring back">↩</button><button onclick="mvDel('${f.id}')">×</button></span>`).join('')+'</div>'):'<div class="empty"><span class="big">🍿</span>Nothing passed. Ruthless.</div>';
+    return;
+  }
+  const list=DB.get('movies',[]).filter(x=>!x.passed&&x.lane===mvTab).sort((a,b)=>a.order-b.order);
+  if(!list.length){box.innerHTML='<div class="empty"><span class="big">🎬</span>No films here yet — add one above.</div>';return;}
+  box.innerHTML=list.map((f,i)=>{
+    let react='';
+    if(mvTab!=='t')react+=`<button class="btn sm" onclick="mvMove('${f.id}','t')">▶ Together</button>`;
+    if(mvTab==='t')react+=`<button class="btn sm" onclick="mvMove('${f.id}','f')">Fares</button><button class="btn sm" onclick="mvMove('${f.id}','c')">Charlotte</button>`;
+    return `<div class="film" data-id="${f.id}">
+      <span class="rank">${i+1}</span>
+      <div class="body"><div class="ft">${esc(f.t)}</div>
+        <div class="fm">${f.p?`<span class="plat" style="background:${platColor(f.p)}">${esc(f.p)}</span>`:''}${f.y||''}${f.g?' · '+esc(f.g):''}</div></div>
+      <div class="acts">${react}
+        <button class="btn sm" onclick="mvRecap('${esc(f.t).replace(/'/g,"\\'")}','${f.k||''}')">▷</button>
+        <button class="btn sm" onclick="mvPass('${f.id}')">Pass</button>
+        <button class="xdel" onclick="mvDel('${f.id}')">×</button>
+        <span class="grip" title="drag to rank">⠿</span></div>
+    </div>`;
+  }).join('');
+  makeSortable(box,mvReorder);
+}
+
+/* ================= THIS WEEK ================= */
+const IDEAS=[
+ {n:"KLCC Park evening walk",cost:"free",cat:"Chill"},{n:"Bangsar cafe + bookshop",cost:"paid",cat:"Food"},
+ {n:"Zhongshan Building (indie shops)",cost:"free",cat:"Chill"},{n:"REXKL book bazaar",cost:"free",cat:"Culture"},
+ {n:"TTDI Sunday market breakfast",cost:"free",cat:"Food"},{n:"Ilham Gallery",cost:"free",cat:"Culture"},
+ {n:"Thean Hou Temple at sunset",cost:"free",cat:"Chill"},{n:"Movie night at GSC",cost:"paid",cat:"Food"},
+];
+let ideaF='All';
+function wkRender(){
+  const list=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).sort((a,b)=>a.date<b.date?-1:1);
+  document.getElementById('wk-list').innerHTML=list.length?list.map(e=>{
+    const d=new Date(e.date+'T00:00');
+    return `<div class="evt"><div class="date"><div class="d">${d.getDate()}</div><div class="m">${d.toLocaleString(undefined,{month:'short'})}</div></div>
+      <div class="body"><div class="nm" style="font-weight:600;font-size:15.5px">${esc(e.name)}</div><div class="meta">${esc(e.note||'')} · ${d.toLocaleDateString(undefined,{weekday:'long'})}</div></div>
+      <button class="xdel" onclick="wkDel('${e.id}')">×</button></div>`;
+  }).join(''):'<div class="empty"><span class="big">📅</span>Nothing on the calendar. Add a concert, show, or pop-up below.</div>';
+  document.getElementById('wk-note-box').innerHTML='<b>Heads up:</b> real KL listings (concerts, gigs, exhibitions) come from a live source — that plugs in when the C&F bot lands. For now this is our own dated list, not generic sightseeing.';
+  const cats=['All',...new Set(IDEAS.map(i=>i.cat))];
+  document.getElementById('idea-chips').innerHTML=cats.map(c=>`<span class="chip ${ideaF===c?'on':''}" onclick="ideaF='${c}';wkRender()">${c}</span>`).join('');
+  const il=IDEAS.filter(i=>ideaF==='All'||i.cat===ideaF);
+  document.getElementById('idea-list').innerHTML=il.map(i=>`<div class="item"><div class="top"><span class="nm">${esc(i.n)}</span><span class="pill ${i.cost}">${i.cost==='free'?'Free':'Paid'}</span><span class="pill">${i.cat}</span></div></div>`).join('');
+}
+function wkAdd(){
+  const name=document.getElementById('wk-name').value.trim(),date=document.getElementById('wk-date').value;
+  if(!name||!date)return;
+  const l=DB.get('events',[]);l.push({id:uid(),name,date,note:document.getElementById('wk-note').value.trim()});DB.set('events',l);
+  document.getElementById('wk-name').value='';document.getElementById('wk-note').value='';document.getElementById('wk-date').value='';wkRender();
+}
+function wkDel(id){DB.set('events',DB.get('events',[]).filter(x=>x.id!==id));wkRender();}
+
+/* ================= TRIPS ================= */
+const PLACES=["Kuala Lumpur","Selangor","Melaka","Penang","Perak (Ipoh)","Negeri Sembilan","Pahang (Cameron)","Genting Highlands","Johor","Langkawi","Kedah","Terengganu","Kelantan","Perlis","Sabah","Sarawak"];
+const TRIPS=[{n:"Melaka weekend",d:"~2h drive · old town, river cruise, food",car:"RM110 / 2 days"},{n:"Cameron Highlands",d:"~3.5h drive · tea farms, cool air, strawberries",car:"RM165 / 3 days"},{n:"Ipoh food trip",d:"~2.5h drive · white coffee, caves, old town",car:"RM110 / 2 days"},{n:"Penang",d:"~4h drive / short flight · street art, hawker heaven",car:"RM165 / 3 days"},{n:"Genting overnight",d:"~1h drive · cable car, cool air, shows",car:"RM55 / day"},{n:"Kuala Selangor fireflies",d:"~1.5h drive · fireflies + seafood dinner",car:"RM55 / day"}];
+function trRender(){
+  const done=DB.get('places',{}),n=PLACES.filter(p=>done[p]).length;
+  document.getElementById('map-count').textContent=n+' / '+PLACES.length+' unlocked';
+  document.getElementById('map-bar').style.width=Math.round(n/PLACES.length*100)+'%';
+  document.getElementById('map-grid').innerHTML=PLACES.map(p=>`<div class="place ${done[p]?'done':''}" onclick="trToggle('${p.replace(/'/g,"\\'")}')"><div class="pn">${done[p]?'✓ ':''}${esc(p)}</div><div class="ps">${done[p]?'been there':'not yet'}</div></div>`).join('');
+  document.getElementById('trip-ideas').innerHTML=TRIPS.map(t=>`<div class="item"><div class="top"><span class="nm">${esc(t.n)}</span><span class="pill paid" style="margin-left:auto">🚗 ${esc(t.car)}</span></div><div class="meta">${esc(t.d)}</div></div>`).join('');
+}
+function trToggle(p){const d=DB.get('places',{});d[p]=!d[p];DB.set('places',d);trRender();}
+
+/* ================= COOKING ================= */
+const SEED=[{id:'seed1',title:"Garlic butter fried rice",steps:["Cook 2 cups rice, let it cool (day-old is best)","Dice 4 garlic cloves and 1 onion","Melt butter, fry garlic + onion till golden","Push aside, scramble 2 eggs","Add rice, soy sauce, a pinch of sugar","Toss on high heat 3 min, finish with spring onion"]}];
+function recipes(){return DB.get('recipes',SEED);}
+function ckRender(){
+  const l=recipes();
+  document.getElementById('cook-list').innerHTML=l.length?l.map(r=>`<div class="item"><div class="top"><span class="nm">${esc(r.title)}</span>${r.link?`<a class="pill" href="${esc(r.link)}" target="_blank">↗ source</a>`:''}<span class="meta" style="margin:0 0 0 4px">${r.steps.length?r.steps.length+' steps':'link only'}</span>${r.steps.length?`<button class="btn sm primary" style="margin-left:auto" onclick="cmOpen('${r.id}')">▷ Cook mode</button>`:'<span style="margin-left:auto"></span>'}${r.id.startsWith('seed')?'':`<button class="xdel" onclick="ckDel('${r.id}')">×</button>`}</div></div>`).join(''):'<div class="empty"><span class="big">🍳</span>No recipes yet — paste a TikTok or add one by hand.</div>';
+}
+function ckLink(){
+  const link=document.getElementById('ck-link').value.trim();if(!link)return;
+  const l=recipes().slice();l.unshift({id:uid(),title:'Recipe from link (add steps)',link,steps:[]});DB.set('recipes',l);
+  document.getElementById('ck-link').value='';ckRender();
+}
+function ckAdd(){
+  const title=document.getElementById('ck-title').value.trim();
+  const steps=document.getElementById('ck-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!title||!steps.length)return;
+  const l=recipes().slice();l.unshift({id:uid(),title,steps});DB.set('recipes',l);
+  document.getElementById('ck-title').value='';document.getElementById('ck-steps').value='';ckRender();
+}
+function ckDel(id){DB.set('recipes',recipes().filter(r=>r.id!==id));ckRender();}
+let cm={steps:[],i:0,title:''};
+function cmOpen(id){const r=recipes().find(x=>x.id===id);if(!r||!r.steps.length)return;cm={steps:r.steps,i:0,title:r.title};document.getElementById('cookmode').classList.add('show');cmDraw();}
+function cmClose(){document.getElementById('cookmode').classList.remove('show');}
+function cmMove(d){if(cm.i===cm.steps.length-1&&d>0){cmClose();return;}cm.i=Math.max(0,Math.min(cm.steps.length-1,cm.i+d));cmDraw();}
+function cmDraw(){
+  document.getElementById('cm-title').textContent=cm.title;
+  document.getElementById('cm-body').textContent=cm.steps[cm.i];
+  document.getElementById('cm-count').textContent='Step '+(cm.i+1)+' of '+cm.steps.length;
+  document.getElementById('cm-next').textContent=cm.i===cm.steps.length-1?'Done ✓':'Next →';
+  document.getElementById('cm-dots').innerHTML=cm.steps.map((_,i)=>`<i class="${i===cm.i?'on':''}"></i>`).join('');
+}
+
+/* ================= BILLS ================= */
+function blAdd(){
+  const label=document.getElementById('bl-label').value.trim(),amt=parseFloat(document.getElementById('bl-amt').value);
+  if(!label||!(amt>0))return;
+  const l=DB.get('bills',[]);l.unshift({id:uid(),label,amt,who:document.getElementById('bl-who').value,split:document.getElementById('bl-split').value,ts:now()});DB.set('bills',l);
+  document.getElementById('bl-label').value='';document.getElementById('bl-amt').value='';blRender();
+}
+function blDel(id){DB.set('bills',DB.get('bills',[]).filter(x=>x.id!==id));blRender();}
+function blRender(){
+  const l=DB.get('bills',[]);let bal=0,sF=0,sC=0;
+  l.forEach(b=>{if(b.who==='F')sF+=b.amt;else sC+=b.amt;let fShare=b.split==='S'?b.amt/2:b.split==='F'?b.amt:0;if(b.who==='F')bal+=b.amt-fShare;else bal-=fShare;});
+  const who=bal>0.005?'Charlotte owes Fares':bal<-0.005?'Fares owes Charlotte':'All settled';
+  document.getElementById('bill-stats').innerHTML=`<div class="stat"><b class="${Math.abs(bal)<0.005?'settled':'owe'}">RM ${Math.abs(bal).toFixed(2)}</b><span>${who}</span></div><div class="stat"><b>RM ${sF.toFixed(0)}</b><span>Fares paid</span></div><div class="stat"><b>RM ${sC.toFixed(0)}</b><span>Charlotte paid</span></div>`;
+  document.getElementById('bill-list').innerHTML=l.length?l.map(b=>{const s=b.split==='S'?'split 50/50':b.split==='F'?'for Fares':'for Charlotte';return `<div class="item"><div class="top"><span class="whopill who-${b.who}">${b.who==='F'?'Fares':'Charlotte'} paid</span><span class="nm">${esc(b.label)}</span><span style="margin-left:auto;font-weight:700" class="tabular">RM ${b.amt.toFixed(2)}</span><button class="xdel" onclick="blDel('${b.id}')">×</button></div><div class="meta">${s}</div></div>`;}).join(''):'<div class="empty"><span class="big">🧾</span>No expenses yet — clean slate.</div>';
+}
+
+/* ================= SPORT ================= */
+function spAdd(){
+  const act=document.getElementById('sp-act').value.trim();if(!act)return;
+  const min=parseInt(document.getElementById('sp-min').value)||0;
+  const l=DB.get('sport',[]);l.unshift({id:uid(),act,who:document.getElementById('sp-who').value,min,ts:now()});DB.set('sport',l);
+  document.getElementById('sp-act').value='';document.getElementById('sp-min').value='';spRender();
+}
+function spDel(id){DB.set('sport',DB.get('sport',[]).filter(x=>x.id!==id));spRender();}
+function spRender(){
+  const l=DB.get('sport',[]),wk=l.filter(x=>x.ts>now()-7*864e5),mins=wk.reduce((a,b)=>a+(b.min||0),0);
+  document.getElementById('sp-stats').innerHTML=`<div class="stat"><b>${wk.length}</b><span>sessions this week</span></div><div class="stat"><b>${mins}</b><span>minutes this week</span></div><div class="stat"><b>${l.length}</b><span>all time</span></div>`;
+  document.getElementById('sp-list').innerHTML=l.length?l.map(s=>{const d=new Date(s.ts).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});return `<div class="item"><div class="top"><span class="whopill who-${s.who}">${s.who==='S'?'Both':s.who==='F'?'Fares':'Charlotte'}</span><span class="nm">${esc(s.act)}</span>${s.min?`<span class="meta" style="margin:0 0 0 4px">${s.min} min</span>`:''}<span style="margin-left:auto" class="meta">${d}</span><button class="xdel" onclick="spDel('${s.id}')">×</button></div></div>`;}).join(''):'<div class="empty"><span class="big">🏃</span>No sessions yet — go move, then log it.</div>';
+}
+
+/* ---------- boot ---------- */
+document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+mvInput().addEventListener('input',mvAc);
+mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
+document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))document.getElementById('mv-ac').classList.remove('show');});
+go(location.hash.replace('#','')||'home');
+</script>
+</body>
+</html>
