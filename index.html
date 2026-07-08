@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#20302b">
+<meta name="theme-color" content="#2a2140">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>C &amp; F</title>
@@ -13,12 +13,13 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   :root{
-    --bg:#20302b; --bg2:#1a2823;
-    --paper:#f5eee1; --paper2:#ece2cf; --card:#fffdf8; --cardEdge:#ece1cc;
-    --ink:#242019; --ink2:#4a453b; --muted:#938a78; --faint:#b8ad98;
-    --line:#e8dec9; --line2:#ddd0b6;
-    --green:#5f8355; --greenD:#48663f; --terra:#b06a5a; --gold:#c39a4a; --blue:#4f7280; --plum:#8a5f78;
-    --sh1:0 1px 2px rgba(40,30,15,.05); --sh2:0 10px 30px -8px rgba(40,30,15,.14);
+    /* "Dusk" palette — plum night, rose, warm gold. Deliberately NOT PATH. */
+    --bg:#2a2140; --bg2:#221a34;
+    --paper:#faf5f5; --paper2:#f2e8ec; --card:#ffffff; --cardEdge:#f0e5e9;
+    --ink:#2a2333; --ink2:#4e4657; --muted:#8d8299; --faint:#c1b6c8;
+    --line:#efe3e8; --line2:#e6d6dd;
+    --green:#d94f70; --greenD:#c23f60; --terra:#7e5a9b; --gold:#e0a33e; --blue:#4e6dd0; --plum:#b06a8e;
+    --sh1:0 1px 2px rgba(50,30,45,.05); --sh2:0 12px 34px -10px rgba(50,25,45,.18);
     --r:18px; --rs:12px;
     --safe-b:env(safe-area-inset-bottom,0px);
   }
@@ -26,11 +27,11 @@
   html,body{margin:0;padding:0}
   body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--paper);
     color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;
-    background-image:radial-gradient(circle at 12% 8%,rgba(95,131,85,.05),transparent 42%),radial-gradient(circle at 88% 0%,rgba(176,106,90,.05),transparent 40%);}
+    background-image:radial-gradient(circle at 12% 8%,rgba(217,79,112,.06),transparent 42%),radial-gradient(circle at 88% 0%,rgba(126,90,155,.06),transparent 40%);}
   h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em}
   button{font-family:inherit;cursor:pointer}
   .wrap{max-width:940px;margin:0 auto;padding:0 18px}
-  ::selection{background:#dfe7d3}
+  ::selection{background:#f6dde7}
 
   /* ===== top nav ===== */
   .nav{position:sticky;top:0;z-index:40;background:var(--bg);color:#f3ece0;
@@ -38,16 +39,16 @@
   .nav .bar{max-width:940px;margin:0 auto;padding:0 18px;height:60px;display:flex;align-items:center;gap:14px}
   .logo{font-family:'Fraunces',serif;font-weight:700;font-size:20px;letter-spacing:.01em;cursor:pointer;
     display:flex;align-items:center;gap:2px;color:#fff}
-  .logo .a{color:#e0a17f;font-style:italic;padding:0 3px}
+  .logo .a{color:#e7b24e;font-style:italic;padding:0 3px}
   .logo:hover{opacity:.9}
   .navspace{flex:1}
-  .navdate{font-size:12.5px;color:#b9c3ac;font-variant-numeric:tabular-nums}
+  .navdate{font-size:12.5px;color:#b6a9c6;font-variant-numeric:tabular-nums}
   .tabs{max-width:940px;margin:0 auto;padding:0 12px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
-  .tab{flex:0 0 auto;border:none;background:none;color:#aeb8a2;padding:9px 13px 12px;font-size:13.5px;
+  .tab{flex:0 0 auto;border:none;background:none;color:#a89bb6;padding:9px 13px 12px;font-size:13.5px;
     font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;display:flex;gap:6px;align-items:center}
   .tab .d{font-size:15px;filter:grayscale(.3) opacity(.8)}
-  .tab.on{color:#fff;border-bottom-color:#e0a17f}
+  .tab.on{color:#fff;border-bottom-color:#e7b24e}
   .tab.on .d{filter:none}
 
   /* ===== views ===== */
@@ -85,7 +86,7 @@
   /* ===== controls ===== */
   input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink);background:var(--card);
     border:1px solid var(--line);border-radius:var(--rs);padding:12px 14px;outline:none;width:100%;transition:border-color .15s,box-shadow .15s}
-  input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(95,131,85,.14)}
+  input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(217,79,112,.16)}
   input::placeholder,textarea::placeholder{color:var(--faint)}
   textarea{resize:vertical;min-height:88px}
   .btn{border:1px solid var(--line2);background:var(--card);border-radius:var(--rs);padding:11px 15px;
@@ -101,7 +102,7 @@
   .muted{color:var(--muted)} .tabular{font-variant-numeric:tabular-nums}
   .sectitle{font-size:11.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin:26px 0 10px;font-weight:700}
   .pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px;background:var(--paper2);color:var(--ink2)}
-  .pill.free{background:#e5efdd;color:#4c6b3d} .pill.paid{background:#f4e7d3;color:#8a6a2c}
+  .pill.free{background:#e7ecfb;color:#3f52a8} .pill.paid{background:#f7e3ec;color:#a8496e}
   .empty{color:var(--muted);text-align:center;padding:34px 16px;font-size:14.5px;border:1.5px dashed var(--line2);border-radius:var(--r);background:rgba(255,255,255,.35)}
   .empty .big{font-size:30px;display:block;margin-bottom:8px;opacity:.7}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 16px}
@@ -153,13 +154,13 @@
   /* map */
   .mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-top:12px}
   .place{border:1px solid var(--line2);border-radius:13px;padding:12px 13px;background:var(--card);transition:all .15s}
-  .place.done{background:#e5efdd;border-color:#c2d6b2}
+  .place.done{background:#f7e3ec;border-color:#e6c2d2}
   .place .pn{font-weight:600;font-size:14px} .place .ps{color:var(--muted);font-size:11.5px;margin-top:2px}
-  .place.done .ps{color:#4c6b3d}
+  .place.done .ps{color:#b0466f}
   .progress{height:10px;background:var(--paper2);border-radius:20px;overflow:hidden;margin-top:8px}
   .progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:20px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
-  #map{height:min(64vh,540px);border-radius:14px;margin-top:12px;background:#1a2823;z-index:1}
-  .leaflet-container{font-family:'Inter',sans-serif;background:#1a2823}
+  #map{height:min(64vh,540px);border-radius:14px;margin-top:12px;background:#221a34;z-index:1}
+  .leaflet-container{font-family:'Inter',sans-serif;background:#221a34}
   .leaflet-tooltip{background:var(--bg);border:none;color:#f3ece0;font-weight:600;font-size:12px;box-shadow:var(--sh2)}
   .leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none}
   .maptop{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
@@ -171,10 +172,10 @@
   .overlay .step-b{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;
     font-family:'Fraunces',serif;font-size:clamp(24px,5.5vw,44px);font-weight:500;line-height:1.28;max-width:780px;margin:0 auto}
   .overlay .dots{display:flex;gap:6px;justify-content:center;margin:10px 0}
-  .overlay .dots i{width:7px;height:7px;border-radius:50%;background:#4a5a51}
-  .overlay .dots i.on{background:#e0a17f}
+  .overlay .dots i{width:7px;height:7px;border-radius:50%;background:#463a60}
+  .overlay .dots i.on{background:#e7b24e}
   .overlay .nav2{display:flex;gap:12px;justify-content:center}
-  .overlay .nav2 .btn{padding:15px 30px;font-size:16px;background:transparent;color:#f3ece0;border-color:#3e4d45}
+  .overlay .nav2 .btn{padding:15px 30px;font-size:16px;background:transparent;color:#f3ece0;border-color:#463a60}
   .overlay .nav2 .btn.primary{background:var(--green);border-color:var(--green)}
 
   /* stats */
@@ -182,9 +183,9 @@
   .stat{flex:1 1 120px;background:var(--card);border:1px solid var(--cardEdge);border-radius:var(--r);padding:15px 17px;box-shadow:var(--sh1)}
   .stat b{font-family:'Fraunces',serif;font-size:27px;font-weight:600;display:block;line-height:1}
   .stat span{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:600}
-  .owe{color:var(--terra)} .settled{color:var(--green)}
+  .owe{color:#c23f60} .settled{color:#4e6dd0}
   .whopill{border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px}
-  .who-F{background:#eadfce;color:#7a5c3e} .who-C{background:#ecdde6;color:#8a5f78} .who-S{background:#e5efdd;color:#4c6b3d}
+  .who-F{background:#e7ecfb;color:#3f52a8} .who-C{background:#f7e3ec;color:#b0466f} .who-S{background:#f6ecd6;color:#957019}
 
   .note{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.4);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:12px;line-height:1.5}
   .note b{color:var(--ink2)}
@@ -498,7 +499,7 @@ let map=null,statesLayer=null,pinLayer=null,mapInited=false;
 const uStates=()=>DB.get(S_KEY,{});
 const towns=()=>DB.get(T_KEY,[]);
 function stateStyle(f){const on=uStates()[f.properties.name];
-  return on?{color:'#9cd987',weight:1.6,fillColor:'#5f8355',fillOpacity:.55}:{color:'#3d4d46',weight:1,fillColor:'#28352f',fillOpacity:.55};}
+  return on?{color:'#f2c879',weight:1.6,fillColor:'#e0a33e',fillOpacity:.5}:{color:'#43395e',weight:1,fillColor:'#2b2340',fillOpacity:.55};}
 function trRender(){
   if(!mapInited)initMap();
   if(map)setTimeout(()=>map.invalidateSize(),90);
@@ -522,7 +523,7 @@ function initMap(){
 function toggleState(name){const s=uStates();s[name]=!s[name];DB.set(S_KEY,s);if(statesLayer)statesLayer.setStyle(stateStyle);updateProgress();}
 function renderPins(){
   if(pinLayer){pinLayer.clearLayers();
-    towns().forEach(t=>L.circleMarker([t.lat,t.lon],{radius:6,color:'#f0b483',weight:2,fillColor:'#c39a4a',fillOpacity:.95}).bindTooltip(t.name).addTo(pinLayer));}
+    towns().forEach(t=>L.circleMarker([t.lat,t.lon],{radius:6,color:'#f7b6c9',weight:2,fillColor:'#d94f70',fillOpacity:.95}).bindTooltip(t.name).addTo(pinLayer));}
   document.getElementById('town-chips').innerHTML=towns().length
     ? towns().map(t=>`<span class="ptag">📍 ${esc(t.name)}<button onclick="townDel('${t.id}')">×</button></span>`).join('')
     : '<span class="muted" style="font-size:13px">No towns pinned yet — type one above and hit Unlock.</span>';
