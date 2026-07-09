@@ -58,8 +58,13 @@
   .logo:hover{opacity:.9}
   .navspace{flex:1}
   .navdate{font-size:12.5px;color:#7f8aa0;font-variant-numeric:tabular-nums}
-  .themeBtn{margin-left:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#f0b74e;width:34px;height:34px;border-radius:10px;font-size:15px;line-height:1;display:grid;place-items:center;transition:all .15s}
+  .themeBtn{margin-left:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#f0b74e;width:34px;height:34px;border-radius:10px;font-size:15px;line-height:1;display:grid;place-items:center;transition:all .15s}
   .themeBtn:hover{background:rgba(255,255,255,.15)}
+  .meBtn{margin-left:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#eaecf2;height:34px;padding:0 12px;border-radius:10px;font-size:12.5px;font-weight:600;white-space:nowrap;transition:all .15s}
+  .meBtn:hover{background:rgba(255,255,255,.15)}
+  .ac-thumb{width:32px;height:44px;border-radius:6px;overflow:hidden;flex:0 0 auto;display:grid;place-items:center}
+  .ac-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+  .addby{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:2px}
   .tabs{max-width:940px;margin:0 auto;padding:0 12px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;border:none;background:none;color:#8992a6;padding:9px 13px 12px;font-size:13.5px;
@@ -225,6 +230,7 @@
     <div class="logo" onclick="go('home')">C<span class="a">&amp;</span>F</div>
     <div class="navspace"></div>
     <div class="navdate" id="navdate"></div>
+    <button id="meBtn" class="meBtn" onclick="cycleMe()" title="Who's using this — tags what you add">You: Fares</button>
     <button id="themeBtn" class="themeBtn" onclick="toggleTheme()" title="Toggle theme">☀</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -439,6 +445,11 @@ function applyTheme(t){
 }
 function toggleTheme(){applyTheme(DB.get('theme','dark')==='light'?'dark':'light');}
 
+/* ---------- who am I (tags what you add) ---------- */
+function meName(){return DB.get('me','F')==='C'?'Charlotte':'Fares';}
+function renderMe(){const b=document.getElementById('meBtn');if(b)b.textContent='You: '+meName();}
+function cycleMe(){DB.set('me',DB.get('me','F')==='F'?'C':'F');renderMe();if(document.getElementById('v-movies').classList.contains('active'))mvRender();}
+
 /* ---------- home ---------- */
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
@@ -489,20 +500,55 @@ function posterCell(f){
 }
 const LANE={t:'Together',f:'Fares',c:'Charlotte'};
 const mvInput=()=>document.getElementById('mv-input');
+let mvSug=[],mvAcTimer=null;
+function localMatches(q){const ql=q.toLowerCase();
+  return LIB.filter(m=>m[0].toLowerCase().includes(ql)).slice(0,6).map(m=>({t:m[0],y:m[1],k:m[2],p:m[3],g:m[4],poster:(window.CF_POSTERS||{})[m[0]]||null}));}
 function mvAc(){
-  const q=mvInput().value.trim().toLowerCase(),box=document.getElementById('mv-ac');
-  if(q.length<2){box.classList.remove('show');return;}
-  const hits=LIB.filter(m=>m[0].toLowerCase().includes(q)).slice(0,8);
-  if(!hits.length){box.classList.remove('show');return;}
-  box.innerHTML=hits.map(m=>{const i=LIB.indexOf(m);return `<div class="ac-item" onclick="mvSel(${i})"><span class="plat" style="background:${platColor(m[3])}">${m[3]}</span><span class="nm">${esc(m[0])}</span><span class="mt">${m[1]} · ${m[4]} · ${m[2]==='S'?'Series':'Film'}</span></div>`;}).join('');
+  const q=mvInput().value.trim();clearTimeout(mvAcTimer);
+  if(q.length<2){document.getElementById('mv-ac').classList.remove('show');return;}
+  renderSug(localMatches(q)); // instant local results
+  mvAcTimer=setTimeout(()=>liveSearch(q),320); // then widen to the whole internet
+}
+async function tvmazeSearch(q){try{
+  const a=await(await fetch('https://api.tvmaze.com/search/shows?q='+encodeURIComponent(q))).json();
+  return a.slice(0,5).map(({show:s})=>({t:s.name,y:s.premiered?+s.premiered.slice(0,4):null,k:'S',p:(s.network&&s.network.name)||(s.webChannel&&s.webChannel.name)||null,g:(s.genres&&s.genres[0])||null,poster:s.image&&(s.image.medium||s.image.original)||null}));
+}catch(e){return[];}}
+async function wikiSearch(q){try{
+  const j=await(await fetch('https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch='+encodeURIComponent(q)+'&gsrlimit=6&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=120&exintro=1&explaintext=1&exsentences=1&origin=*')).json();
+  if(!j.query)return[];
+  return Object.values(j.query.pages).sort((a,b)=>a.index-b.index).map(p=>{const ex=p.extract||'';
+    if(!/(film|television series|TV series|miniseries|sitcom|anime|drama series|streaming television|documentary)/i.test(ex))return null;
+    const ym=ex.match(/\b(19|20)\d{2}\b/);
+    const k=/(television series|TV series|miniseries|sitcom|drama series|anime|streaming television)/i.test(ex)?'S':'F';
+    return {t:p.title.replace(/\s*\([^)]*\)\s*$/,''),y:ym?+ym[0]:null,k,p:null,g:null,poster:p.thumbnail?p.thumbnail.source:null};
+  }).filter(Boolean);
+}catch(e){return[];}}
+async function liveSearch(q){
+  const [shows,wiki]=await Promise.all([tvmazeSearch(q),wikiSearch(q)]);
+  const seen=new Set(),out=[];
+  for(const r of [...localMatches(q),...shows,...wiki]){const k=r.t.toLowerCase();if(seen.has(k))continue;seen.add(k);out.push(r);}
+  if(mvInput().value.trim()===q)renderSug(out.slice(0,9));
+}
+function renderSug(list){
+  mvSug=list;const box=document.getElementById('mv-ac');
+  if(!list.length){box.classList.remove('show');return;}
+  box.innerHTML=list.map((m,i)=>`<div class="ac-item" onclick="mvSel(${i})">
+    <span class="ac-thumb" style="background:${m.p?platColor(m.p):'#3a4152'}">${m.poster?`<img src="${esc(m.poster)}" onerror="this.remove()">`:''}</span>
+    <span class="nm">${esc(m.t)}</span><span class="mt">${[m.y,m.k?(m.k==='S'?'Series':'Film'):'',m.p].filter(Boolean).join(' · ')}</span></div>`).join('');
   box.classList.add('show');
 }
-function mvSel(i){const m=LIB[i];mvPick={t:m[0],y:m[1],k:m[2],p:m[3],g:m[4]};mvInput().value=m[0];document.getElementById('mv-ac').classList.remove('show');document.getElementById('mv-picked').innerHTML='Picked: <b>'+esc(m[0])+'</b> · '+m[1]+' · '+m[3];}
+function mvSel(i){
+  const m=mvSug[i];if(!m)return;
+  mvPick={t:m.t,y:m.y,k:m.k,p:m.p,g:m.g};
+  if(m.poster&&!(window.CF_POSTERS&&CF_POSTERS[m.t])){const c=DB.get('artcache',{});c[m.t]=m.poster;DB.set('artcache',c);}
+  mvInput().value=m.t;document.getElementById('mv-ac').classList.remove('show');
+  document.getElementById('mv-picked').innerHTML='Picked: <b>'+esc(m.t)+'</b>'+[m.y,m.p].filter(Boolean).map(x=>' · '+esc(x)).join('');
+}
 function mvAdd(){
   const raw=mvInput().value.trim();if(!raw)return;
   const lane=document.getElementById('mv-lane').value;
   const rec=mvPick&&mvPick.t.toLowerCase()===raw.toLowerCase()?mvPick:{t:raw,y:null,k:null,p:null,g:null};
-  const l=DB.get('movies',[]);l.push({id:uid(),...rec,lane,order:now(),passed:false});DB.set('movies',l);
+  const l=DB.get('movies',[]);l.push({id:uid(),...rec,lane,order:now(),passed:false,addedBy:DB.get('me','F')});DB.set('movies',l);
   mvInput().value='';mvPick=null;document.getElementById('mv-picked').textContent='';mvTab=lane;mvRender();mvInput().focus();
 }
 function mvMut(id,fn){const l=DB.get('movies',[]);const f=l.find(x=>x.id===id);if(f){fn(f);DB.set('movies',l);mvRender();}}
@@ -531,7 +577,7 @@ function mvRender(){
       <span class="rank">${i+1}</span>
       ${posterCell(f)}
       <div class="body"><div class="ft">${esc(f.t)}</div>
-        <div class="fm">${f.p?`<span class="plat" style="background:${platColor(f.p)}">${esc(f.p)}</span>`:''}${f.y||''}${f.g?' · '+esc(f.g):''}</div></div>
+        <div class="fm">${f.p?`<span class="plat" style="background:${platColor(f.p)}">${esc(f.p)}</span>`:''}${f.y||''}${f.g?' · '+esc(f.g):''}${f.addedBy?`<span class="addby who-${f.addedBy}">added by ${f.addedBy==='C'?'Charlotte':'Fares'}</span>`:''}</div></div>
       <div class="acts">${react}
         <button class="btn sm" onclick="mvRecap('${esc(f.t).replace(/'/g,"\\'")}','${f.k||''}')">▷</button>
         <button class="btn sm" onclick="mvPass('${f.id}')">Pass</button>
@@ -730,6 +776,7 @@ function spRender(){
 
 /* ---------- boot ---------- */
 applyTheme(DB.get('theme','dark'));
+renderMe();
 document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
 mvInput().addEventListener('input',mvAc);
 mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
