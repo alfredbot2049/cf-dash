@@ -227,6 +227,8 @@
   .sugg b{font-size:14px;font-weight:600}
   .sugg span{font-size:11.5px;color:var(--muted)}
   .sugg em{font-style:normal;font-size:11px;font-weight:700;color:var(--green);margin-top:3px}
+  .evt .nm a{color:var(--green);text-decoration:none}
+  .evt .nm a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -272,13 +274,14 @@
 
   <!-- THIS WEEK -->
   <section class="view" id="v-week"><div class="pad">
-    <div class="vhead"><h2>What's On</h2><div class="sub">Dated things worth leaving the house for — concerts, shows, one-offs.</div></div>
-    <div class="sectitle">Upcoming</div>
+    <div class="vhead"><h2>What's On in KL</h2><div class="sub">Real upcoming events, refreshed automatically. Plus anything you add.</div></div>
+    <div class="chips" id="wk-filters"></div>
     <div id="wk-list"></div>
-    <div class="sectitle">Add something on</div>
+    <div class="note" id="wk-note-box"></div>
+    <div class="sectitle">Add your own</div>
     <div class="card">
       <div class="row">
-        <input id="wk-name" placeholder="What (e.g. Coldplay @ Bukit Jalil, night market pop-up)" style="flex:3 1 220px">
+        <input id="wk-name" placeholder="What (e.g. Coldplay @ Bukit Jalil)" style="flex:3 1 220px">
         <input id="wk-date" type="date" style="flex:1 1 150px">
       </div>
       <div class="row" style="margin-top:9px">
@@ -286,10 +289,6 @@
         <button class="btn primary" onclick="wkAdd()">Add</button>
       </div>
     </div>
-    <div class="note" id="wk-note-box"></div>
-    <div class="sectitle">If nothing's on — low-key ideas</div>
-    <div class="chips" id="idea-chips"></div>
-    <div id="idea-list"></div>
   </div></section>
 
   <!-- TRIPS -->
@@ -392,6 +391,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="malaysia.geojson.js"></script>
 <script src="posters.js"></script>
+<script src="events.js"></script>
 <script>
 /* ---------- storage ---------- */
 const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v))}};
@@ -462,7 +462,7 @@ function cycleMe(){DB.set('me',DB.get('me','F')==='F'?'C':'F');renderMe();if(doc
 /* ---------- home ---------- */
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
- {id:'week',ico:'📅',name:"What's On",desc:'Dated events in KL',color:'var(--gold)',cnt:()=>{const l=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).length;return l?l+' coming up':'nothing yet'}},
+ {id:'week',ico:'📅',name:"What's On",desc:'Live KL events',color:'var(--gold)',cnt:()=>{const today=new Date().toISOString().slice(0,10);const r=((window.CF_EVENTS&&CF_EVENTS.events)||[]).filter(e=>e.date>=today).length;const m=DB.get('events',[]).filter(e=>e.date>=today).length;const t=r+m;return t?t+' coming up':'loading…'}},
  {id:'trips',ico:'🗺️',name:'Asia Map',desc:'Explore all of Asia',color:'var(--blue)',cnt:()=>{const n=new Set(DB.get('places_asia',[]).map(p=>p.cc).filter(Boolean)).size;return n?n+' countries':'start exploring'}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
@@ -597,27 +597,29 @@ function mvRender(){
   makeSortable(box,mvReorder);
 }
 
-/* ================= THIS WEEK ================= */
-const IDEAS=[
- {n:"KLCC Park evening walk",cost:"free",cat:"Chill"},{n:"Bangsar cafe + bookshop",cost:"paid",cat:"Food"},
- {n:"Zhongshan Building (indie shops)",cost:"free",cat:"Chill"},{n:"REXKL book bazaar",cost:"free",cat:"Culture"},
- {n:"TTDI Sunday market breakfast",cost:"free",cat:"Food"},{n:"Ilham Gallery",cost:"free",cat:"Culture"},
- {n:"Thean Hou Temple at sunset",cost:"free",cat:"Chill"},{n:"Movie night at GSC",cost:"paid",cat:"Food"},
-];
-let ideaF='All';
+/* ================= WHAT'S ON ================= */
+let wkFilter='All';
+function wkAllEvents(){
+  const today=new Date().toISOString().slice(0,10);
+  const real=((window.CF_EVENTS&&CF_EVENTS.events)||[]).map(e=>({...e,mine:false}));
+  const mine=DB.get('events',[]).map(e=>({name:e.name,date:e.date,venue:e.note||'',url:'',cat:'Ours',id:e.id,mine:true}));
+  return real.concat(mine).filter(e=>e.date>=today).sort((a,b)=>a.date<b.date?-1:1);
+}
 function wkRender(){
-  const list=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).sort((a,b)=>a.date<b.date?-1:1);
+  const all=wkAllEvents();
+  const cats=['All',...[...new Set(all.map(e=>e.cat))]];
+  document.getElementById('wk-filters').innerHTML=cats.map(c=>`<span class="chip ${wkFilter===c?'on':''}" onclick="wkFilter='${c}';wkRender()">${c}</span>`).join('');
+  const list=all.filter(e=>wkFilter==='All'||e.cat===wkFilter);
   document.getElementById('wk-list').innerHTML=list.length?list.map(e=>{
-    const d=new Date(e.date+'T00:00');
+    const d=new Date(e.date+'T00:00'),wd=d.toLocaleDateString(undefined,{weekday:'short'});
+    const title=e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name);
     return `<div class="evt"><div class="date"><div class="d">${d.getDate()}</div><div class="m">${d.toLocaleString(undefined,{month:'short'})}</div></div>
-      <div class="body"><div class="nm" style="font-weight:600;font-size:15.5px">${esc(e.name)}</div><div class="meta">${esc(e.note||'')} · ${d.toLocaleDateString(undefined,{weekday:'long'})}</div></div>
-      <button class="xdel" onclick="wkDel('${e.id}')">×</button></div>`;
-  }).join(''):'<div class="empty"><span class="big">📅</span>Nothing on the calendar. Add a concert, show, or pop-up below.</div>';
-  document.getElementById('wk-note-box').innerHTML='<b>Heads up:</b> real KL listings (concerts, gigs, exhibitions) come from a live source — that plugs in when the C&F bot lands. For now this is our own dated list, not generic sightseeing.';
-  const cats=['All',...new Set(IDEAS.map(i=>i.cat))];
-  document.getElementById('idea-chips').innerHTML=cats.map(c=>`<span class="chip ${ideaF===c?'on':''}" onclick="ideaF='${c}';wkRender()">${c}</span>`).join('');
-  const il=IDEAS.filter(i=>ideaF==='All'||i.cat===ideaF);
-  document.getElementById('idea-list').innerHTML=il.map(i=>`<div class="item"><div class="top"><span class="nm">${esc(i.n)}</span><span class="pill ${i.cost}">${i.cost==='free'?'Free':'Paid'}</span><span class="pill">${i.cat}</span></div></div>`).join('');
+      <div class="body"><div class="nm" style="font-weight:600;font-size:15px">${title}</div>
+        <div class="meta">${wd}${e.venue?' · '+esc(e.venue):''}${e.cat&&e.cat!=='Event'?' · '+esc(e.cat):''}</div></div>
+      ${e.mine?`<button class="xdel" onclick="wkDel('${e.id}')">×</button>`:''}</div>`;
+  }).join(''):'<div class="empty"><span class="big">📅</span>No events loaded — open the live link so it can fetch them.</div>';
+  const ts=window.CF_EVENTS&&CF_EVENTS.fetchedAt;
+  document.getElementById('wk-note-box').innerHTML='<b>Auto-updated:</b> real KL events pulled from Eventbrite'+(ts?' · refreshed '+new Date(ts).toLocaleDateString():'')+'. Tap an event to open its page. Refreshes on its own — no need to add anything by hand.';
 }
 function wkAdd(){
   const name=document.getElementById('wk-name').value.trim(),date=document.getElementById('wk-date').value;
