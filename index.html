@@ -221,6 +221,12 @@
   .chk.on .box{background:var(--green);border-color:var(--green)}
   .chk .txt{flex:1;font-size:15px}
   .chk.on .txt{text-decoration:line-through;color:var(--muted)}
+  /* recipe suggestions */
+  .sugg{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--card);border:1px solid var(--cardEdge);border-radius:12px;padding:11px 13px;box-shadow:var(--sh1);flex:1 1 210px;transition:all .14s}
+  .sugg:hover{border-color:var(--green);transform:translateY(-2px)}
+  .sugg b{font-size:14px;font-weight:600}
+  .sugg span{font-size:11.5px;color:var(--muted)}
+  .sugg em{font-style:normal;font-size:11px;font-weight:700;color:var(--green);margin-top:3px}
 </style>
 </head>
 <body>
@@ -288,21 +294,22 @@
 
   <!-- TRIPS -->
   <section class="view" id="v-trips"><div class="pad">
-    <div class="vhead"><h2>Malaysia Map</h2><div class="sub">Type any town or city — it pins on the map and unlocks. Tap a state to mark it too.</div></div>
+    <div class="vhead"><h2>Asia Map</h2><div class="sub">Type any city in Asia — it pins on the map and unlocks its country + zone.</div></div>
     <div class="card">
       <div class="row">
-        <input id="town-input" placeholder="Type a town / city — e.g. Melaka, Ipoh, Kuah…" style="flex:3 1 240px" autocomplete="off">
+        <input id="town-input" placeholder="Type a city — Bangkok, Tokyo, Bali, Seoul, Hanoi…" style="flex:3 1 240px" autocomplete="off">
         <button class="btn primary" id="town-btn" onclick="townSearch()">Unlock</button>
       </div>
       <div class="maptop" style="margin-top:14px">
-        <b id="map-count" class="serif" style="font-size:19px">0 / 15 states</b>
-        <span class="muted" style="font-size:12.5px"><b id="town-count">0</b> towns pinned</span>
+        <b id="map-count" class="serif" style="font-size:19px">0 countries</b>
+        <span class="muted" style="font-size:12.5px"><b id="town-count">0</b> cities pinned</span>
       </div>
-      <div class="progress"><i id="map-bar" style="width:0%"></i></div>
       <div id="map"></div>
-      <div class="chips" id="town-chips" style="margin-top:14px"></div>
+      <div id="zone-progress" style="margin-top:14px"></div>
+      <div class="sectitle" style="margin-top:18px">Unlocked</div>
+      <div class="chips" id="town-chips"></div>
     </div>
-    <div class="sectitle">Weekend trip ideas · rough car cost</div>
+    <div class="sectitle">Weekend trip ideas from KL</div>
     <div id="trip-ideas"></div>
   </div></section>
 
@@ -316,6 +323,8 @@
       </div>
       <div class="note"><b>How it works:</b> paste a link and our extractor pulls the ingredients + steps off the video (no typing). Auto-extract runs through the C&amp;F bot once it's wired — for now the link is saved and you can drop in the steps below. </div>
     </div>
+    <div class="sectitle">High-protein &amp; healthy — tap to add</div>
+    <div id="ck-suggest"></div>
     <div class="sectitle">Our recipes</div>
     <div id="cook-list"></div>
     <div class="sectitle">Add a recipe by hand</div>
@@ -441,7 +450,7 @@ function applyTheme(t){
   document.documentElement.dataset.theme=t;DB.set('theme',t);
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',t==='light'?'#20263a':'#0f1117');
   const btn=document.getElementById('themeBtn');if(btn)btn.textContent=t==='light'?'☾':'☀';
-  setTiles();if(statesLayer)statesLayer.setStyle(stateStyle);
+  setTiles();
 }
 function toggleTheme(){applyTheme(DB.get('theme','dark')==='light'?'dark':'light');}
 
@@ -454,7 +463,7 @@ function cycleMe(){DB.set('me',DB.get('me','F')==='F'?'C':'F');renderMe();if(doc
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
  {id:'week',ico:'📅',name:"What's On",desc:'Dated events in KL',color:'var(--gold)',cnt:()=>{const l=DB.get('events',[]).filter(e=>new Date(e.date)>=new Date(new Date().toDateString())).length;return l?l+' coming up':'nothing yet'}},
- {id:'trips',ico:'🗺️',name:'Trips & Map',desc:'Unlock Malaysia',color:'var(--blue)',cnt:()=>{const n=Object.values(DB.get('states2',{})).filter(Boolean).length;return n+' / 15 states'}},
+ {id:'trips',ico:'🗺️',name:'Asia Map',desc:'Explore all of Asia',color:'var(--blue)',cnt:()=>{const n=new Set(DB.get('places_asia',[]).map(p=>p.cc).filter(Boolean)).size;return n?n+' countries':'start exploring'}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
@@ -618,82 +627,99 @@ function wkAdd(){
 }
 function wkDel(id){DB.set('events',DB.get('events',[]).filter(x=>x.id!==id));wkRender();}
 
-/* ================= TRIPS / MAP ================= */
+/* ================= TRIPS / ASIA MAP ================= */
 const TRIPS=[{n:"Melaka weekend",d:"~2h drive · old town, river cruise, food",car:"RM110 / 2 days"},{n:"Cameron Highlands",d:"~3.5h drive · tea farms, cool air, strawberries",car:"RM165 / 3 days"},{n:"Ipoh food trip",d:"~2.5h drive · white coffee, caves, old town",car:"RM110 / 2 days"},{n:"Penang",d:"~4h drive / short flight · street art, hawker heaven",car:"RM165 / 3 days"},{n:"Genting overnight",d:"~1h drive · cable car, cool air, shows",car:"RM55 / day"},{n:"Kuala Selangor fireflies",d:"~1.5h drive · fireflies + seafood dinner",car:"RM55 / day"}];
-const S_KEY='states2',T_KEY='towns';
-let map=null,statesLayer=null,pinLayer=null,mapInited=false,tileLayer=null;
+const T_KEY='places_asia';
+const ZONES=[
+ {id:'sea',name:'Southeast Asia',cc:['MY','SG','TH','VN','PH','ID','KH','LA','MM','BN','TL']},
+ {id:'ea',name:'East Asia',cc:['CN','JP','KR','KP','TW','HK','MO','MN']},
+ {id:'sa',name:'South Asia',cc:['IN','PK','BD','LK','NP','BT','MV','AF']},
+ {id:'ca',name:'Central Asia',cc:['KZ','UZ','TM','KG','TJ']},
+ {id:'wa',name:'West Asia',cc:['AE','SA','QA','KW','BH','OM','JO','LB','IL','TR','GE','AM','AZ','IQ','IR','YE','SY','PS','CY']},
+];
+const CC2ZONE={};ZONES.forEach(z=>z.cc.forEach(c=>CC2ZONE[c]=z.id));
+const ZONECOLOR={sea:'#f0b74e',ea:'#5b8def',sa:'#8b7cf6',ca:'#3fd0c9',wa:'#e0698a'};
+let map=null,pinLayer=null,mapInited=false,tileLayer=null,statesLayer=null;
 function tileUrl(){return DB.get('theme','dark')==='light'?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';}
 function setTiles(){if(typeof L==='undefined'||!map)return;if(tileLayer)map.removeLayer(tileLayer);tileLayer=L.tileLayer(tileUrl(),{maxZoom:18,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}).addTo(map);}
-const uStates=()=>DB.get(S_KEY,{});
-const towns=()=>DB.get(T_KEY,[]);
-function stateStyle(f){const on=uStates()[f.properties.name];
-  const light=DB.get('theme','dark')==='light';
-  return on?{color:'#e0982e',weight:1.6,fillColor:'#f0b74e',fillOpacity:.5}
-           :light?{color:'#9aa3b5',weight:1,fillColor:'#b9c1d0',fillOpacity:.45}
-                 :{color:'#2f3648',weight:1,fillColor:'#1a1f2e',fillOpacity:.6};}
+const places=()=>DB.get(T_KEY,[]);
+function ccFlag(cc){if(!cc||cc.length!==2)return '📍';return String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt(0)));}
+function visitedCCs(){return [...new Set(places().map(p=>p.cc).filter(Boolean))];}
 function trRender(){
   if(!mapInited)initMap();
   if(map)setTimeout(()=>map.invalidateSize(),90);
-  if(statesLayer)statesLayer.setStyle(stateStyle);
-  renderPins();updateProgress();
+  renderPins();updateProgress();renderZones();
   document.getElementById('trip-ideas').innerHTML=TRIPS.map(t=>`<div class="item"><div class="top"><span class="nm">${esc(t.n)}</span><span class="pill paid" style="margin-left:auto">🚗 ${esc(t.car)}</span></div><div class="meta">${esc(t.d)}</div></div>`).join('');
 }
 function initMap(){
   const box=document.getElementById('map');
-  if(typeof L==='undefined'||!window.MY_STATES){box.innerHTML='<div class="empty" style="margin:0">The map needs internet — open the live link to use it.</div>';mapInited=true;return;}
-  map=L.map('map',{scrollWheelZoom:false}).setView([4.2,109.5],5);
+  if(typeof L==='undefined'){box.innerHTML='<div class="empty" style="margin:0">The map needs internet — open the live link to use it.</div>';mapInited=true;return;}
+  map=L.map('map',{scrollWheelZoom:false,worldCopyJump:true}).setView([20,100],3);
   setTiles();
-  statesLayer=L.geoJSON(window.MY_STATES,{style:stateStyle,onEachFeature:(f,layer)=>{
-    layer.bindTooltip(f.properties.name,{sticky:true});
-    layer.on('click',()=>toggleState(f.properties.name));
-  }}).addTo(map);
   pinLayer=L.layerGroup().addTo(map);
-  try{map.fitBounds(statesLayer.getBounds(),{padding:[8,8]});}catch(e){}
+  try{map.fitBounds([[-10,65],[52,146]],{padding:[6,6]});}catch(e){}
   mapInited=true;
 }
-function toggleState(name){const s=uStates();s[name]=!s[name];DB.set(S_KEY,s);if(statesLayer)statesLayer.setStyle(stateStyle);updateProgress();}
 function renderPins(){
   if(pinLayer){pinLayer.clearLayers();
-    towns().forEach(t=>L.circleMarker([t.lat,t.lon],{radius:6,color:'#cfe0ff',weight:2,fillColor:'#5b8def',fillOpacity:.95}).bindTooltip(t.name).addTo(pinLayer));}
-  document.getElementById('town-chips').innerHTML=towns().length
-    ? towns().map(t=>`<span class="ptag">📍 ${esc(t.name)}<button onclick="townDel('${t.id}')">×</button></span>`).join('')
-    : '<span class="muted" style="font-size:13px">No towns pinned yet — type one above and hit Unlock.</span>';
+    places().forEach(t=>L.circleMarker([t.lat,t.lon],{radius:6,color:'#fff7d6',weight:2,fillColor:'#f0b74e',fillOpacity:.95}).bindTooltip(t.name+(t.country?', '+t.country:'')).addTo(pinLayer));}
+  const c=places();
+  document.getElementById('town-chips').innerHTML=c.length
+    ? c.slice().reverse().map(t=>`<span class="ptag">${t.cc?ccFlag(t.cc)+' ':'📍 '}${esc(t.name)}<button onclick="townDel('${t.id}')">×</button></span>`).join('')
+    : '<span class="muted" style="font-size:13px">No cities yet — type one above and hit Unlock.</span>';
 }
 function updateProgress(){
-  const total=window.MY_STATES?window.MY_STATES.features.length:15;
-  const n=Object.values(uStates()).filter(Boolean).length;
-  document.getElementById('map-count').textContent=n+' / '+total+' states';
-  document.getElementById('map-bar').style.width=Math.round(n/total*100)+'%';
-  document.getElementById('town-count').textContent=towns().length;
+  document.getElementById('map-count').textContent=visitedCCs().length+' countr'+(visitedCCs().length===1?'y':'ies');
+  document.getElementById('town-count').textContent=places().length;
+}
+function renderZones(){
+  const v=visitedCCs();
+  document.getElementById('zone-progress').innerHTML=ZONES.map(z=>{
+    const done=z.cc.filter(c=>v.includes(c)).length,pct=Math.round(done/z.cc.length*100);
+    return `<div style="margin-bottom:11px"><div class="row" style="justify-content:space-between"><span style="font-size:13px;font-weight:600">${z.name}</span><span class="muted" style="font-size:12px">${done} / ${z.cc.length}</span></div><div class="progress"><i style="width:${pct}%;background:${ZONECOLOR[z.id]}"></i></div></div>`;
+  }).join('');
 }
 async function townSearch(){
   const q=document.getElementById('town-input').value.trim();if(!q)return;
   const btn=document.getElementById('town-btn');btn.textContent='…';btn.disabled=true;
   try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=my&q='+encodeURIComponent(q),{headers:{Accept:'application/json'}});
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&accept-language=en&limit=1&q='+encodeURIComponent(q));
     const j=await r.json();
-    if(!j.length){alert('Could not find "'+q+'" in Malaysia. Try a nearby or bigger town name.');}
+    if(!j.length){alert('Could not find "'+q+'". Try a bigger nearby city.');}
     else{
       const hit=j[0],lat=+hit.lat,lon=+hit.lon;
-      const list=towns();list.push({id:uid(),name:hit.display_name.split(',')[0].trim(),lat,lon,full:hit.display_name});DB.set(T_KEY,list);
-      const st=stateAt(lat,lon);if(st){const s=uStates();s[st]=true;DB.set(S_KEY,s);}
+      const cc=((hit.address&&hit.address.country_code)||'').toUpperCase();
+      const country=(hit.address&&hit.address.country)||'';
+      const list=places();list.push({id:uid(),name:hit.display_name.split(',')[0].trim(),lat,lon,cc,country,zone:CC2ZONE[cc]||null});DB.set(T_KEY,list);
       document.getElementById('town-input').value='';
-      if(statesLayer)statesLayer.setStyle(stateStyle);renderPins();updateProgress();
-      if(map)map.flyTo([lat,lon],9,{duration:.8});
+      renderPins();updateProgress();renderZones();
+      if(map)map.flyTo([lat,lon],7,{duration:.9});
     }
   }catch(e){alert('Search needs internet — open the live link.');}
   btn.textContent='Unlock';btn.disabled=false;
 }
-function townDel(id){DB.set(T_KEY,towns().filter(t=>t.id!==id));renderPins();}
-function stateAt(lat,lon){for(const f of window.MY_STATES.features){if(pipGeom([lon,lat],f.geometry))return f.properties.name;}return null;}
-function pipGeom(pt,g){if(g.type==='Polygon')return pipPoly(pt,g.coordinates);if(g.type==='MultiPolygon')return g.coordinates.some(p=>pipPoly(pt,p));return false;}
-function pipPoly(pt,rings){if(!pipRing(pt,rings[0]))return false;for(let i=1;i<rings.length;i++)if(pipRing(pt,rings[i]))return false;return true;}
-function pipRing(pt,ring){let x=pt[0],y=pt[1],inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+function townDel(id){DB.set(T_KEY,places().filter(t=>t.id!==id));renderPins();updateProgress();renderZones();}
 
 /* ================= COOKING ================= */
 const SEED=[{id:'seed1',title:"Garlic butter fried rice",steps:["Cook 2 cups rice, let it cool (day-old is best)","Dice 4 garlic cloves and 1 onion","Melt butter, fry garlic + onion till golden","Push aside, scramble 2 eggs","Add rice, soy sauce, a pinch of sugar","Toss on high heat 3 min, finish with spring onion"]}];
+const CK_SUGGEST=[
+ {id:'hp1',title:"Chicken & garlic rice bowl",kcal:"~45g protein",tag:"High protein",steps:["Season 2 chicken breasts with salt, pepper, paprika","Sear 5-6 min each side until 74°C inside, rest, slice","Cook 1 cup rice; stir through a little garlic + soy","Steam or pan a handful of broccoli or green beans","Top rice with chicken + veg, drizzle sriracha-yoghurt (Greek yoghurt + sriracha)"]},
+ {id:'hp2',title:"Beef & broccoli stir-fry",kcal:"~40g protein",tag:"High protein",steps:["Slice 300g lean beef thin against the grain","Toss with 1 tbsp soy + 1 tsp cornflour, rest 10 min","Blanch 2 cups broccoli 1 min, drain","High-heat sear beef 2 min, remove","Fry garlic + ginger, return beef + broccoli, add soy + oyster sauce, toss 1 min","Serve over rice"]},
+ {id:'hp3',title:"Salmon, quinoa & greens",kcal:"~38g protein, omega-3",tag:"Healthy",steps:["Cook 1 cup quinoa in stock","Pat 2 salmon fillets dry, salt + pepper","Pan-sear skin-down 4 min, flip 2 min","Wilt spinach in the same pan with garlic + lemon","Plate quinoa, greens, salmon; squeeze lemon"]},
+ {id:'hp4',title:"Greek yoghurt protein bowl",kcal:"~30g protein",tag:"Breakfast",steps:["1.5 cups Greek yoghurt in a bowl","Add 1 scoop vanilla protein, stir smooth","Top with berries, banana, chia seeds","Spoon of peanut butter + drizzle honey","Handful of granola for crunch"]},
+ {id:'hp5',title:"Egg & feta veggie scramble",kcal:"~28g protein",tag:"Breakfast",steps:["Whisk 4 eggs with salt + pepper","Soften diced pepper, onion, tomato in olive oil","Pour eggs, stir gently on low","Fold in crumbled feta + spinach off heat","Serve with wholegrain toast or avocado"]},
+ {id:'hp6',title:"Tofu peanut noodles",kcal:"~26g protein, veggie",tag:"Healthy",steps:["Press + cube 1 block firm tofu, pan-fry till golden","Cook noodles, rinse cold","Sauce: 2 tbsp peanut butter, soy, lime, garlic, splash hot water","Toss noodles, tofu, shredded carrot + cucumber in sauce","Top with crushed peanuts + chilli"]},
+ {id:'hp7',title:"Chicken shawarma wrap",kcal:"~42g protein",tag:"High protein",steps:["Toss 400g chicken thigh strips with cumin, paprika, garlic, yoghurt","Marinate 15 min, pan-sear until charred + cooked","Warm wholemeal wraps","Fill with chicken, salad, pickles","Drizzle garlic yoghurt or hummus, roll tight"]},
+ {id:'hp8',title:"Lentil & chicken soup",kcal:"~35g protein, high fibre",tag:"Healthy",steps:["Sauté onion, carrot, celery, garlic","Add 1 cup red lentils, diced chicken, cumin","Pour 1.5L stock, simmer 25 min","Season, squeeze lemon, stir in spinach","Blend half for creaminess if you like"]},
+];
 function recipes(){return DB.get('recipes',SEED);}
+function ckAddSuggest(id){const s=CK_SUGGEST.find(x=>x.id===id);if(!s)return;const l=recipes().slice();if(l.some(r=>r.title===s.title)){go('cooking');return;}l.unshift({id:uid(),title:s.title,steps:s.steps.slice()});DB.set('recipes',l);ckRender();}
+function ckSuggestRender(){
+  const have=new Set(recipes().map(r=>r.title));
+  document.getElementById('ck-suggest').innerHTML='<div class="chips" style="margin-bottom:4px">'+CK_SUGGEST.map(s=>`<button class="sugg" onclick="ckAddSuggest('${s.id}')"><b>${esc(s.title)}</b><span>${esc(s.kcal)} · ${s.steps.length} steps</span>${have.has(s.title)?'<em>✓ added</em>':'<em>+ add</em>'}</button>`).join('')+'</div>';
+}
 function ckRender(){
+  ckSuggestRender();
   const l=recipes();
   document.getElementById('cook-list').innerHTML=l.length?l.map(r=>`<div class="item"><div class="top"><span class="nm">${esc(r.title)}</span>${r.link?`<a class="pill" href="${esc(r.link)}" target="_blank">↗ source</a>`:''}<span class="meta" style="margin:0 0 0 4px">${r.steps.length?r.steps.length+' steps':'link only'}</span>${r.steps.length?`<button class="btn sm primary" style="margin-left:auto" onclick="cmOpen('${r.id}')">▷ Cook mode</button>`:'<span style="margin-left:auto"></span>'}${r.id.startsWith('seed')?'':`<button class="xdel" onclick="ckDel('${r.id}')">×</button>`}</div></div>`).join(''):'<div class="empty"><span class="big">🍳</span>No recipes yet — paste a TikTok or add one by hand.</div>';
 }
