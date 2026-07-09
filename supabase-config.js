@@ -1,0 +1,1 @@
+window.CF_SB={url:"https://dsdvuudyxbelkyhgjmkz.supabase.co",anon:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZHZ1dWR5eGJlbGt5aGdqbWt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NzUxNDQsImV4cCI6MjA5OTE1MTE0NH0.vFzbzu8RUv39CUk9VfEhSC5vdIM86hzZMlq6Zm7drjQ"};

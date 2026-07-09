@@ -229,6 +229,13 @@
   .sugg em{font-style:normal;font-size:11px;font-weight:700;color:var(--green);margin-top:3px}
   .evt .nm a{color:var(--green);text-decoration:none}
   .evt .nm a:hover{text-decoration:underline}
+  /* auth modal */
+  .modal-wrap{position:fixed;inset:0;background:rgba(6,8,14,.6);backdrop-filter:blur(3px);z-index:70;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-wrap.show{display:flex}
+  .modal{background:var(--card);border:1px solid var(--cardEdge);border-radius:18px;box-shadow:var(--sh2);padding:20px;width:100%;max-width:380px}
+  .seg{display:flex;background:var(--paper2);border-radius:11px;padding:3px;gap:3px}
+  .authseg{flex:1;border:none;background:none;color:var(--muted);font-weight:600;font-size:13px;padding:8px;border-radius:9px}
+  .authseg.on{background:var(--card);color:var(--ink);box-shadow:var(--sh1)}
 </style>
 </head>
 <body>
@@ -238,7 +245,7 @@
     <div class="logo" onclick="go('home')">C<span class="a">&amp;</span>F</div>
     <div class="navspace"></div>
     <div class="navdate" id="navdate"></div>
-    <button id="meBtn" class="meBtn" onclick="cycleMe()" title="Who's using this — tags what you add">You: Fares</button>
+    <button id="acctBtn" class="meBtn" onclick="acctClick()" title="Sign in to sync with Charlotte">Sign in</button>
     <button id="themeBtn" class="themeBtn" onclick="toggleTheme()" title="Toggle theme">☀</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -380,6 +387,22 @@
 
 </div>
 
+<div class="modal-wrap" id="authbox">
+  <div class="modal">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:20px">Sync C <span style="color:var(--terra)">&amp;</span> F</h3><button class="btn ghost" onclick="closeAuth()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 14px">One shared space for the two of you — movies, bills, map, all live on both phones.</p>
+    <div class="seg"><button class="authseg on" data-m="in" onclick="authSwitch('in')">Sign in</button><button class="authseg" data-m="up" onclick="authSwitch('up')">Create account</button></div>
+    <div id="auth-name-row" style="display:none;margin-top:12px">
+      <label class="muted" style="font-size:12px">Who are you?</label>
+      <select id="auth-name" style="margin-top:5px"><option value="Fares">Fares</option><option value="Charlotte">Charlotte</option></select>
+    </div>
+    <input id="auth-email" type="email" placeholder="Email" autocomplete="email" style="margin-top:12px">
+    <input id="auth-pass" type="password" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-top:10px">
+    <div id="auth-err" style="color:var(--terra);font-size:12.5px;min-height:16px;margin-top:8px"></div>
+    <button id="auth-go" class="btn primary" style="width:100%;margin-top:4px" onclick="authGo()">Sign in</button>
+  </div>
+</div>
+
 <div class="overlay" id="cookmode">
   <div class="row" style="justify-content:space-between"><span class="step-n" id="cm-title"></span><button class="btn ghost" style="color:#cdd4c5" onclick="cmClose()">✕ Close</button></div>
   <div class="step-b" id="cm-body"></div>
@@ -392,9 +415,11 @@
 <script src="malaysia.geojson.js"></script>
 <script src="posters.js"></script>
 <script src="events.js"></script>
+<script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ---------- storage ---------- */
-const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v))}};
+const DB={get(k,d){try{const v=JSON.parse(localStorage.getItem('cf-'+k));return v==null?d:v}catch(e){return d}},set(k,v){localStorage.setItem('cf-'+k,JSON.stringify(v));if(typeof onLocalChange==='function')onLocalChange('cf-'+k);}};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>(''+s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now=()=>+new Date();
@@ -454,10 +479,57 @@ function applyTheme(t){
 }
 function toggleTheme(){applyTheme(DB.get('theme','dark')==='light'?'dark':'light');}
 
-/* ---------- who am I (tags what you add) ---------- */
-function meName(){return DB.get('me','F')==='C'?'Charlotte':'Fares';}
-function renderMe(){const b=document.getElementById('meBtn');if(b)b.textContent='You: '+meName();}
-function cycleMe(){DB.set('me',DB.get('me','F')==='F'?'C':'F');renderMe();if(document.getElementById('v-movies').classList.contains('active'))mvRender();}
+/* ---------- accounts + live sync (Supabase) ---------- */
+let sb=null,cfUser=null,pushTimer=null,pulling=false,authMode='in';
+const LOCAL_ONLY=['cf-theme','cf-me'];            // per-device, never synced
+function syncable(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))o[k]=localStorage.getItem(k);}return o;}
+function sbReady(){return !!(sb&&cfUser);}
+function onLocalChange(key){if(sbReady()&&!pulling&&!LOCAL_ONLY.includes(key))schedulePush();}
+function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNow,700);}
+async function pushNow(){if(!sbReady())return;try{await sb.from('cf_state').update({data:syncable(),updated_by:cfUser.name,updated_at:new Date().toISOString()}).eq('id','shared');}catch(e){}}
+function applyRemote(data){if(!data)return;pulling=true;try{Object.entries(data).forEach(([k,v])=>{if(k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));});}finally{pulling=false;}rerender();}
+function rerender(){const v=location.hash.replace('#','')||'home';({movies:mvRender,week:wkRender,trips:trRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||renderTiles)();}
+async function pullMerge(){try{
+  const {data}=await sb.from('cf_state').select('data').eq('id','shared').single();
+  const remote=(data&&data.data)||{},local=syncable();
+  if(!Object.keys(remote).length){await sb.from('cf_state').update({data:local,updated_by:cfUser.name}).eq('id','shared');}
+  else{const merged={...local,...remote};applyRemote(merged);await sb.from('cf_state').update({data:merged,updated_by:cfUser.name}).eq('id','shared');}
+}catch(e){}}
+let lastSeen=null,pollTimer=null;
+function subscribeRealtime(){try{sb.channel('cf-shared').on('postgres_changes',{event:'UPDATE',schema:'public',table:'cf_state',filter:'id=eq.shared'},p=>{if(p.new){lastSeen=p.new.updated_at;applyRemote(p.new.data);}}).subscribe();}catch(e){}}
+async function pollPull(){if(!sbReady())return;try{const {data}=await sb.from('cf_state').select('data,updated_at').eq('id','shared').single();if(data&&data.updated_at!==lastSeen){lastSeen=data.updated_at;applyRemote(data.data);}}catch(e){}}
+async function startSession(user){
+  cfUser={id:user.id,email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'Fares'};
+  DB.set('me',/^char/i.test(cfUser.name)?'C':'F');renderAcct();
+  await pullMerge();subscribeRealtime();
+  clearInterval(pollTimer);pollTimer=setInterval(pollPull,12000);      // safety net if realtime drops
+  window.addEventListener('focus',pollPull);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollPull();});
+}
+function renderAcct(){const b=document.getElementById('acctBtn');if(b)b.textContent=cfUser?('● '+cfUser.name):'Sign in';}
+function acctClick(){if(cfUser){if(confirm('Sign out of C&F sync?'))signOut();}else openAuth();}
+async function signOut(){try{await sb.auth.signOut();}catch(e){}cfUser=null;renderAcct();}
+function openAuth(){if(!sb){alert('Sync needs internet — open the live link.');return;}document.getElementById('authbox').classList.add('show');authErr('');}
+function closeAuth(){document.getElementById('authbox').classList.remove('show');}
+function authSwitch(m){authMode=m;document.getElementById('auth-name-row').style.display=m==='up'?'':'none';document.querySelectorAll('.authseg').forEach(x=>x.classList.toggle('on',x.dataset.m===m));document.getElementById('auth-go').textContent=m==='up'?'Create account':'Sign in';authErr('');}
+function authErr(t){document.getElementById('auth-err').textContent=t||'';}
+async function authGo(){
+  const email=document.getElementById('auth-email').value.trim(),pw=document.getElementById('auth-pass').value;
+  if(!email||!pw){authErr('Enter email and password');return;}
+  const go=document.getElementById('auth-go');go.disabled=true;const label=go.textContent;go.textContent='…';
+  try{
+    if(authMode==='up'){const name=document.getElementById('auth-name').value;const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});if(error)throw error;if(data.session)await startSession(data.user);else{const r=await sb.auth.signInWithPassword({email,password:pw});if(r.error)throw r.error;await startSession(r.data.user);}}
+    else{const {data,error}=await sb.auth.signInWithPassword({email,password:pw});if(error)throw error;await startSession(data.user);}
+    closeAuth();
+  }catch(e){authErr((e&&e.message)||'Failed');}
+  go.disabled=false;go.textContent=label;
+}
+async function sbBoot(){
+  renderAcct();
+  if(!window.CF_SB||!window.supabase)return;
+  try{sb=window.supabase.createClient(CF_SB.url,CF_SB.anon,{auth:{persistSession:true,autoRefreshToken:true}});
+    const {data}=await sb.auth.getSession();if(data&&data.session)await startSession(data.session.user);}catch(e){}
+}
 
 /* ---------- home ---------- */
 const TILES=[
@@ -804,7 +876,7 @@ function spRender(){
 
 /* ---------- boot ---------- */
 applyTheme(DB.get('theme','dark'));
-renderMe();
+sbBoot();
 document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
 mvInput().addEventListener('input',mvAc);
 mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
