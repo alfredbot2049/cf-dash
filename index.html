@@ -762,11 +762,13 @@ const tvInput=()=>document.getElementById('town-input');
 function photonPlace(f){const p=f.properties,c=f.geometry.coordinates;const name=p.name||p.city||p.state||p.country||'';
   const label=[p.name,p.state,p.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
   return {name,label,lat:c[1],lon:c[0],cc:(p.countrycode||'').toUpperCase(),country:p.country||''};}
+const PLACE_PRI={country:0,state:1,city:2,county:3,region:3,town:4,island:5,municipality:5,village:6,locality:7,district:8};
 async function photonSearch(q){
-  const T=['city','town','village','state','country','county','region','locality','municipality','district','island'];
-  const j=await(await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=8&lang=en&lat=13&lon=100')).json();
+  const j=await(await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=10&lang=en')).json();
   const seen=new Set(),out=[];
-  for(const f of (j.features||[])){if(!T.includes(f.properties.type))continue;const pl=photonPlace(f);const k=pl.label.toLowerCase();if(!pl.name||seen.has(k))continue;seen.add(k);out.push(pl);}
+  (j.features||[]).map((f,i)=>({f,i})).filter(x=>x.f.properties.type in PLACE_PRI)
+    .sort((a,b)=>(PLACE_PRI[a.f.properties.type]-PLACE_PRI[b.f.properties.type])||(a.i-b.i))
+    .forEach(({f})=>{const pl=photonPlace(f);const k=pl.label.toLowerCase();if(pl.name&&!seen.has(k)){seen.add(k);out.push(pl);}});
   return out.slice(0,6);
 }
 function renderTvSug(list){
