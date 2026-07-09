@@ -393,13 +393,9 @@
 <div class="modal-wrap" id="authbox">
   <div class="modal">
     <div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:20px">Sync C <span style="color:var(--terra)">&amp;</span> F</h3><button class="btn ghost" onclick="closeAuth()">✕</button></div>
-    <p class="muted" style="font-size:13px;margin:6px 0 14px">One shared space for the two of you — movies, bills, map, all live on both phones.</p>
-    <div class="seg"><button class="authseg on" data-m="in" onclick="authSwitch('in')">Sign in</button><button class="authseg" data-m="up" onclick="authSwitch('up')">Create account</button></div>
-    <div id="auth-name-row" style="display:none;margin-top:12px">
-      <label class="muted" style="font-size:12px">Who are you?</label>
-      <select id="auth-name" style="margin-top:5px"><option value="Fares">Fares</option><option value="Charlotte">Charlotte</option></select>
-    </div>
-    <input id="auth-email" type="email" placeholder="Email" autocomplete="email" style="margin-top:12px">
+    <p class="muted" style="font-size:13px;margin:6px 0 14px">One shared space for the two of you — movies, bills, map, all live on both phones. Sign in with the login Alfred set up for you.</p>
+    <select id="auth-name" style="display:none"><option value="Fares">Fares</option></select>
+    <input id="auth-email" type="email" placeholder="Email" autocomplete="email" style="margin-top:4px">
     <input id="auth-pass" type="password" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-top:10px">
     <div id="auth-err" style="color:var(--terra);font-size:12.5px;min-height:16px;margin-top:8px"></div>
     <button id="auth-go" class="btn primary" style="width:100%;margin-top:4px" onclick="authGo()">Sign in</button>
