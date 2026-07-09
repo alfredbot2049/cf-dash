@@ -302,8 +302,11 @@
   <section class="view" id="v-trips"><div class="pad">
     <div class="vhead"><h2>Asia Map</h2><div class="sub">Type any city in Asia — it pins on the map and unlocks its country + zone.</div></div>
     <div class="card">
-      <div class="row">
-        <input id="town-input" placeholder="Type a city — Bangkok, Tokyo, Bali, Seoul, Hanoi…" style="flex:3 1 240px" autocomplete="off">
+      <div class="row" style="align-items:flex-start">
+        <div class="ac-wrap" style="flex:3 1 240px">
+          <input id="town-input" placeholder="Type a city or country — Bangkok, Tokyo, Vietnam…" autocomplete="off">
+          <div class="ac-list" id="town-ac"></div>
+        </div>
         <button class="btn primary" id="town-btn" onclick="townSearch()">Unlock</button>
       </div>
       <div class="maptop" style="margin-top:14px">
@@ -753,23 +756,42 @@ function renderZones(){
     return `<div style="margin-bottom:11px"><div class="row" style="justify-content:space-between"><span style="font-size:13px;font-weight:600">${z.name}</span><span class="muted" style="font-size:12px">${done} / ${z.cc.length}</span></div><div class="progress"><i style="width:${pct}%;background:${ZONECOLOR[z.id]}"></i></div></div>`;
   }).join('');
 }
+/* live typeahead via Photon (free, no key) */
+let tvSug=[],tvTimer=null;
+const tvInput=()=>document.getElementById('town-input');
+function photonPlace(f){const p=f.properties,c=f.geometry.coordinates;const name=p.name||p.city||p.state||p.country||'';
+  const label=[p.name,p.state,p.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+  return {name,label,lat:c[1],lon:c[0],cc:(p.countrycode||'').toUpperCase(),country:p.country||''};}
+async function photonSearch(q){
+  const T=['city','town','village','state','country','county','region','locality','municipality','district','island'];
+  const j=await(await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=8&lang=en&lat=13&lon=100')).json();
+  const seen=new Set(),out=[];
+  for(const f of (j.features||[])){if(!T.includes(f.properties.type))continue;const pl=photonPlace(f);const k=pl.label.toLowerCase();if(!pl.name||seen.has(k))continue;seen.add(k);out.push(pl);}
+  return out.slice(0,6);
+}
+function renderTvSug(list){
+  tvSug=list;const box=document.getElementById('town-ac');
+  if(!list.length){box.classList.remove('show');return;}
+  box.innerHTML=list.map((p,i)=>`<div class="ac-item" onclick="tvPick(${i})"><span style="font-size:18px;width:24px;text-align:center">${p.cc?ccFlag(p.cc):'📍'}</span><span class="nm">${esc(p.name)}</span><span class="mt">${esc(p.label)}</span></div>`).join('');
+  box.classList.add('show');
+}
+function tvAc(){
+  const q=tvInput().value.trim();clearTimeout(tvTimer);const box=document.getElementById('town-ac');
+  if(q.length<3){box.classList.remove('show');return;}
+  tvTimer=setTimeout(async()=>{try{const r=await photonSearch(q);if(tvInput().value.trim()===q)renderTvSug(r);}catch(e){}},300);
+}
+function tvPick(i){const p=tvSug[i];if(!p)return;addPlace(p);tvInput().value='';document.getElementById('town-ac').classList.remove('show');}
+function addPlace(p){
+  if(!p)return;
+  const list=places();list.push({id:uid(),name:p.name,lat:p.lat,lon:p.lon,cc:p.cc,country:p.country,zone:CC2ZONE[p.cc]||null});DB.set(T_KEY,list);
+  renderPins();updateProgress();renderZones();
+  if(map)map.flyTo([p.lat,p.lon],p.cc&&!p.label.includes(',')?5:7,{duration:.9});
+}
 async function townSearch(){
-  const q=document.getElementById('town-input').value.trim();if(!q)return;
+  const q=tvInput().value.trim();if(!q)return;
   const btn=document.getElementById('town-btn');btn.textContent='…';btn.disabled=true;
-  try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&accept-language=en&limit=1&q='+encodeURIComponent(q));
-    const j=await r.json();
-    if(!j.length){alert('Could not find "'+q+'". Try a bigger nearby city.');}
-    else{
-      const hit=j[0],lat=+hit.lat,lon=+hit.lon;
-      const cc=((hit.address&&hit.address.country_code)||'').toUpperCase();
-      const country=(hit.address&&hit.address.country)||'';
-      const list=places();list.push({id:uid(),name:hit.display_name.split(',')[0].trim(),lat,lon,cc,country,zone:CC2ZONE[cc]||null});DB.set(T_KEY,list);
-      document.getElementById('town-input').value='';
-      renderPins();updateProgress();renderZones();
-      if(map)map.flyTo([lat,lon],7,{duration:.9});
-    }
-  }catch(e){alert('Search needs internet — open the live link.');}
+  try{const r=await photonSearch(q);if(r[0]){addPlace(r[0]);tvInput().value='';document.getElementById('town-ac').classList.remove('show');}else alert('Could not find "'+q+'". Try a bigger nearby city.');}
+  catch(e){alert('Search needs internet — open the live link.');}
   btn.textContent='Unlock';btn.disabled=false;
 }
 function townDel(id){DB.set(T_KEY,places().filter(t=>t.id!==id));renderPins();updateProgress();renderZones();}
@@ -881,7 +903,9 @@ document.getElementById('navdate').textContent=new Date().toLocaleDateString(und
 mvInput().addEventListener('input',mvAc);
 mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
 document.getElementById('cl-input').addEventListener('keydown',e=>{if(e.key==='Enter')clAdd();});
-document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))document.getElementById('mv-ac').classList.remove('show');});
+tvInput().addEventListener('input',tvAc);
+tvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('town-ac').classList.remove('show');townSearch();}});
+document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap')){document.getElementById('mv-ac').classList.remove('show');document.getElementById('town-ac').classList.remove('show');}});
 go(location.hash.replace('#','')||'home');
 </script>
 </body>
