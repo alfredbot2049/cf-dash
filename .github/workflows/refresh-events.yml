@@ -13,10 +13,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node fetch_events.js
+
+      # continue-on-error matters here. fetch_events.js exits non-zero when a
+      # source fails, and Eventbrite reliably fails from Actions (it 405s
+      # datacenter IPs). Without this the job would stop before committing and
+      # we would throw away the Ticketmelon events it did fetch.
+      - name: fetch events
+        id: fetch
+        continue-on-error: true
+        run: node fetch_events.js
+
       - name: commit if changed
         run: |
           git config user.name "cf-events-bot"
           git config user.email "cf-events-bot@users.noreply.github.com"
           git add events.js
           git diff --staged --quiet || (git commit -m "chore: auto-refresh KL events" && git push)
+
+      # Go red on a source failure so it is actually visible. The old workflow
+      # reported success while writing an empty feed, and What's On sat blank
+      # for a week with a green tick next to it.
+      - name: flag source failures
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "A source failed. The feed was preserved, but check the fetch step log."
+          exit 1

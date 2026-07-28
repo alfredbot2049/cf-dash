@@ -227,6 +227,27 @@
   .sugg b{font-size:14px;font-weight:600}
   .sugg span{font-size:11.5px;color:var(--muted)}
   .sugg em{font-style:normal;font-size:11px;font-weight:700;color:var(--green);margin-top:3px}
+  .tier{margin-bottom:22px}
+  .tier.locked{opacity:.5}
+  .tierhead{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
+  .tierhead b{font-family:'Fraunces',serif;font-size:17px}
+  .tiercount{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line2);border-radius:20px;padding:3px 10px;white-space:nowrap}
+  .hike{display:flex;gap:12px;background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh1)}
+  .hike.done{border-color:var(--green)}
+  .hike.done .hname{text-decoration:line-through;opacity:.65}
+  .hbox{flex:0 0 26px;height:26px;margin-top:2px;border-radius:8px;border:1.5px solid var(--line2);background:transparent;font-size:14px;line-height:1;color:var(--green);cursor:pointer}
+  .hike.done .hbox{background:var(--green);border-color:var(--green);color:#fff}
+  .hbox:disabled{cursor:default;opacity:.6}
+  .hbody{flex:1;min-width:0}
+  .hname{font-weight:600;font-size:15px}
+  .hdiff{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-left:7px}
+  .hreq{font-size:12px;font-weight:600;color:var(--gold);margin-top:4px}
+  .hwarn{font-size:12.5px;line-height:1.45;color:var(--terra);border-left:2px solid var(--terra);padding-left:9px;margin-top:7px}
+  .hnote{font-size:12.5px;line-height:1.5;color:var(--muted);margin-top:5px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
+  .tag.free{background:var(--green);color:#fff}
+  .tag.paid{background:var(--card);color:var(--muted);border:1px solid var(--line2)}
+  .tag.src{background:transparent;color:var(--muted);border:1px solid var(--line2);font-weight:600}
   .evt .nm a{color:var(--green);text-decoration:none}
   .evt .nm a:hover{text-decoration:underline}
   /* auth modal */
@@ -282,6 +303,7 @@
   <!-- THIS WEEK -->
   <section class="view" id="v-week"><div class="pad">
     <div class="vhead"><h2>What's On in KL</h2><div class="sub">Real upcoming events, refreshed automatically. Plus anything you add.</div></div>
+    <div class="chips" id="wk-tiers"></div>
     <div class="chips" id="wk-filters"></div>
     <div id="wk-list"></div>
     <div class="note" id="wk-note-box"></div>
@@ -375,8 +397,10 @@
 
   <!-- SPORT -->
   <section class="view" id="v-sport"><div class="pad">
-    <div class="vhead"><h2>Sport</h2><div class="sub">Move together, keep the streak alive.</div></div>
+    <div class="vhead"><h2>Sport</h2><div class="sub">Start at your doorstep. Tick one off, the next one opens.</div></div>
     <div class="stats" id="sp-stats"></div>
+    <div id="sp-tiers"></div>
+    <div class="sectitle">Anything else you did</div>
     <div class="card">
       <div class="row">
         <input id="sp-act" placeholder="Activity (Gym, Run, Padel, Swim…)" style="flex:2 1 160px">
@@ -414,6 +438,7 @@
 <script src="malaysia.geojson.js"></script>
 <script src="posters.js"></script>
 <script src="events.js"></script>
+<script src="hikes.js"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -538,7 +563,7 @@ const TILES=[
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
- {id:'sport',ico:'🏃',name:'Sport',desc:'Move together',color:'var(--plum)',cnt:()=>{const w=DB.get('sport',[]).filter(x=>x.ts>now()-7*864e5).length;return w+' this week'}},
+ {id:'sport',ico:'🏃',name:'Sport',desc:'Hikes to unlock',color:'var(--plum)',cnt:()=>{const d=Object.keys(DB.get('hikesDone',{})).length,t=(window.CF_HIKES?CF_HIKES.hikes.length:0);return t?d+' of '+t+' hikes':'—'}},
 ];
 function renderTiles(){
   const h=new Date().getHours();
@@ -669,28 +694,41 @@ function mvRender(){
 }
 
 /* ================= WHAT'S ON ================= */
-let wkFilter='All';
+let wkFilter='All',wkTier='All';
 function wkAllEvents(){
   const today=new Date().toISOString().slice(0,10);
   const real=((window.CF_EVENTS&&CF_EVENTS.events)||[]).map(e=>({...e,mine:false}));
-  const mine=DB.get('events',[]).map(e=>({name:e.name,date:e.date,venue:e.note||'',url:'',cat:'Ours',id:e.id,mine:true}));
+  const mine=DB.get('events',[]).map(e=>({name:e.name,date:e.date,venue:e.note||'',url:'',cat:'Ours',id:e.id,mine:true,tier:null}));
   return real.concat(mine).filter(e=>e.date>=today).sort((a,b)=>a.date<b.date?-1:1);
 }
 function wkRender(){
   const all=wkAllEvents();
-  const cats=['All',...[...new Set(all.map(e=>e.cat))]];
+  // Two independent filters: price first (that's usually the real question),
+  // then category. Each chip row counts against what the other row allows.
+  const byTier=t=>t==='All'?all:all.filter(e=>e.tier===t.toLowerCase());
+  const tiers=[['All',all.length],['Free',all.filter(e=>e.tier==='free').length],['Paid',all.filter(e=>e.tier==='paid').length]];
+  document.getElementById('wk-tiers').innerHTML=tiers.map(([t,n])=>`<span class="chip ${wkTier===t?'on':''}" onclick="wkTier='${t}';wkRender()">${t} ${n}</span>`).join('');
+  const pool=byTier(wkTier);
+  const cats=['All',...[...new Set(pool.map(e=>e.cat))]];
+  if(!cats.includes(wkFilter))wkFilter='All';
   document.getElementById('wk-filters').innerHTML=cats.map(c=>`<span class="chip ${wkFilter===c?'on':''}" onclick="wkFilter='${c}';wkRender()">${c}</span>`).join('');
-  const list=all.filter(e=>wkFilter==='All'||e.cat===wkFilter);
+  const list=pool.filter(e=>wkFilter==='All'||e.cat===wkFilter);
   document.getElementById('wk-list').innerHTML=list.length?list.map(e=>{
     const d=new Date(e.date+'T00:00'),wd=d.toLocaleDateString(undefined,{weekday:'short'});
     const title=e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name);
+    // Show the amount only when we actually have it. Eventbrite tells us an
+    // event is paid but never how much, so that just reads "Paid".
+    const tag=e.tier==='free'?'<span class="tag free">FREE</span>'
+      :e.tier==='paid'?`<span class="tag paid">${e.price?esc(e.cur||'')+' '+e.price:'PAID'}</span>`:'';
+    const src=e.src?`<span class="tag src">${esc(e.src==='ticketmelon'?'Ticketmelon':e.src==='eventbrite'?'Eventbrite':e.src)}</span>`:'';
     return `<div class="evt"><div class="date"><div class="d">${d.getDate()}</div><div class="m">${d.toLocaleString(undefined,{month:'short'})}</div></div>
-      <div class="body"><div class="nm" style="font-weight:600;font-size:15px">${title}</div>
-        <div class="meta">${wd}${e.venue?' · '+esc(e.venue):''}${e.cat&&e.cat!=='Event'?' · '+esc(e.cat):''}</div></div>
+      <div class="body"><div class="nm" style="font-weight:600;font-size:15px">${title}${tag}</div>
+        <div class="meta">${wd}${e.venue?' · '+esc(e.venue):''}${e.cat&&e.cat!=='Event'?' · '+esc(e.cat):''}${src}</div></div>
       ${e.mine?`<button class="xdel" onclick="wkDel('${e.id}')">×</button>`:''}</div>`;
-  }).join(''):'<div class="empty"><span class="big">📅</span>No events loaded — open the live link so it can fetch them.</div>';
+  }).join(''):'<div class="empty"><span class="big">📅</span>Nothing matches those filters.</div>';
   const ts=window.CF_EVENTS&&CF_EVENTS.fetchedAt;
-  document.getElementById('wk-note-box').innerHTML='<b>Auto-updated:</b> real KL events pulled from Eventbrite'+(ts?' · refreshed '+new Date(ts).toLocaleDateString():'')+'. Tap an event to open its page. Refreshes on its own — no need to add anything by hand.';
+  const srcs=((window.CF_EVENTS&&CF_EVENTS.sources)||[]).map(s=>s.name).join(' + ')||'Eventbrite';
+  document.getElementById('wk-note-box').innerHTML='<b>Auto-updated:</b> real KL events from '+esc(srcs)+(ts?' · refreshed '+new Date(ts).toLocaleDateString():'')+'. Tap an event to open its page. Refreshes on its own — no need to add anything by hand.';
 }
 function wkAdd(){
   const name=document.getElementById('wk-name').value.trim(),date=document.getElementById('wk-date').value;
@@ -880,7 +918,70 @@ function blRender(){
   document.getElementById('bill-list').innerHTML=l.length?l.map(b=>{const s=b.split==='S'?'split 50/50':b.split==='F'?'for Fares':'for Charlotte';return `<div class="item"><div class="top"><span class="whopill who-${b.who}">${b.who==='F'?'Fares':'Charlotte'} paid</span><span class="nm">${esc(b.label)}</span><span style="margin-left:auto;font-weight:700" class="tabular">RM ${b.amt.toFixed(2)}</span><button class="xdel" onclick="blDel('${b.id}')">×</button></div><div class="meta">${s}</div></div>`;}).join(''):'<div class="empty"><span class="big">🧾</span>No expenses yet — clean slate.</div>';
 }
 
-/* ================= SPORT ================= */
+/* ================= SPORT: hike progression ================= */
+// Unlock rule: two hikes done in a tier opens the next one. Deliberately not
+// "all of them" — Tabur and Bunga Buah have access problems and nobody should
+// feel pushed onto a trail people have died on to unlock the next tier.
+const SP_UNLOCK=2;
+function spDone(){return DB.get('hikesDone',{});}
+function spTierDone(t){const d=spDone();return (window.CF_HIKES?CF_HIKES.hikes:[]).filter(h=>h.tier===t&&d[h.id]).length;}
+function spMaxTier(){
+  const tiers=(window.CF_HIKES?CF_HIKES.tiers:[]).map(t=>t.n);
+  let open=1;
+  for(const t of tiers){if(spTierDone(t)>=SP_UNLOCK)open=Math.max(open,t+1);else break;}
+  return Math.min(open,Math.max(...tiers,1));
+}
+function spTick(id){
+  const d=spDone();
+  if(d[id]){delete d[id];}
+  else{
+    const h=(window.CF_HIKES?CF_HIKES.hikes:[]).find(x=>x.id===id);
+    d[id]={ts:now()};
+    // A hike is also a session, so it counts in the streak below.
+    if(h){const l=DB.get('sport',[]);l.unshift({id:uid(),act:h.name,who:'S',min:0,ts:now(),hike:true});DB.set('sport',l);}
+  }
+  DB.set('hikesDone',d);spRender();
+}
+function spFacts(h){
+  const bits=[];
+  if(h.drive)bits.push('🚗 '+esc(h.drive));
+  if(h.time)bits.push('⏱ '+esc(h.time));
+  if(h.summit)bits.push('▲ '+h.summit+'m');
+  else if(h.gain)bits.push('↑ '+h.gain+'m');
+  if(h.dist)bits.push(h.dist+'km');
+  return bits.join(' · ');
+}
+function spHikeCard(h,locked){
+  const d=spDone(),done=!!d[h.id];
+  const req=[];
+  if(h.permit)req.push(h.permit===true?'Permit needed':esc(h.permit));
+  if(h.guide)req.push('Guide required');
+  if(h.closed)req.push(esc(h.closed));
+  return `<div class="hike ${done?'done':''} ${locked?'locked':''}">
+    <button class="hbox" onclick="${locked?'':`spTick('${h.id}')`}" ${locked?'disabled':''}>${done?'✓':locked?'🔒':''}</button>
+    <div class="hbody">
+      <div class="hname">${esc(h.name)}<span class="hdiff">${esc(h.diff||'')}</span></div>
+      <div class="meta">${esc(h.area)} · ${spFacts(h)}</div>
+      ${req.length?`<div class="hreq">${req.join(' · ')}</div>`:''}
+      ${h.warn?`<div class="hwarn"><b>Read first:</b> ${esc(h.warn)}</div>`:''}
+      ${h.note&&!locked?`<div class="hnote">${esc(h.note)}</div>`:''}
+    </div></div>`;
+}
+function spRenderTiers(){
+  const box=document.getElementById('sp-tiers');if(!box)return;
+  if(!window.CF_HIKES){box.innerHTML='';return;}
+  const open=spMaxTier();
+  box.innerHTML=CF_HIKES.tiers.map(t=>{
+    const locked=t.n>open;
+    const list=CF_HIKES.hikes.filter(h=>h.tier===t.n);
+    const done=spTierDone(t.n);
+    const head=`<div class="tierhead"><div><b>${t.n}. ${esc(t.name)}</b><div class="meta">${locked?'Do '+SP_UNLOCK+' from tier '+(t.n-1)+' to open this':esc(t.blurb)}</div></div>
+      <span class="tiercount">${done}/${list.length}</span></div>`;
+    return `<div class="tier ${locked?'locked':''}">${head}${list.map(h=>spHikeCard(h,locked)).join('')}</div>`;
+  }).join('');
+}
+
+/* ================= SPORT: log ================= */
 function spAdd(){
   const act=document.getElementById('sp-act').value.trim();if(!act)return;
   const min=parseInt(document.getElementById('sp-min').value)||0;
@@ -889,8 +990,10 @@ function spAdd(){
 }
 function spDel(id){DB.set('sport',DB.get('sport',[]).filter(x=>x.id!==id));spRender();}
 function spRender(){
+  spRenderTiers();
   const l=DB.get('sport',[]),wk=l.filter(x=>x.ts>now()-7*864e5),mins=wk.reduce((a,b)=>a+(b.min||0),0);
-  document.getElementById('sp-stats').innerHTML=`<div class="stat"><b>${wk.length}</b><span>sessions this week</span></div><div class="stat"><b>${mins}</b><span>minutes this week</span></div><div class="stat"><b>${l.length}</b><span>all time</span></div>`;
+  const hikes=Object.keys(spDone()).length,total=(window.CF_HIKES?CF_HIKES.hikes.length:0);
+  document.getElementById('sp-stats').innerHTML=`<div class="stat"><b>${hikes}${total?'/'+total:''}</b><span>hikes done</span></div><div class="stat"><b>${wk.length}</b><span>sessions this week</span></div><div class="stat"><b>${mins}</b><span>minutes this week</span></div>`;
   document.getElementById('sp-list').innerHTML=l.length?l.map(s=>{const d=new Date(s.ts).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});return `<div class="item"><div class="top"><span class="whopill who-${s.who}">${s.who==='S'?'Both':s.who==='F'?'Fares':'Charlotte'}</span><span class="nm">${esc(s.act)}</span>${s.min?`<span class="meta" style="margin:0 0 0 4px">${s.min} min</span>`:''}<span style="margin-left:auto" class="meta">${d}</span><button class="xdel" onclick="spDel('${s.id}')">×</button></div></div>`;}).join(''):'<div class="empty"><span class="big">🏃</span>No sessions yet — go move, then log it.</div>';
 }
 
