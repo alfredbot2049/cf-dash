@@ -49,7 +49,12 @@
   ::selection{background:#2c3a63}
 
   /* ===== top nav ===== */
+  /* Added to Home Screen, apple-mobile-web-app-status-bar-style is
+     black-translucent, so the page starts at y=0 UNDERNEATH the clock and the
+     Dynamic Island. Without this inset the wordmark and the sign-in button sit
+     on top of the status bar. */
   .nav{position:sticky;top:0;z-index:40;background:var(--bg);color:#eaecf2;
+    padding-top:env(safe-area-inset-top,0px);
     box-shadow:0 6px 24px -12px rgba(0,0,0,.5)}
   .nav .bar{max-width:940px;margin:0 auto;padding:0 18px;height:60px;display:flex;align-items:center;gap:14px}
   .logo{font-family:'Fraunces',serif;font-weight:700;font-size:20px;letter-spacing:.01em;cursor:pointer;
@@ -151,7 +156,10 @@
   .poster{width:44px;height:62px;border-radius:8px;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.25)}
   .poster .pimg{width:100%;height:100%;object-fit:contain;display:block}
   .poster .pfall{width:100%;height:100%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;font-family:'Fraunces',serif}
-  .film .grip{cursor:grab;color:var(--faint);font-size:18px;padding:4px 2px;touch-action:none;user-select:none}
+  .film .grip{cursor:grab;color:var(--faint);font-size:18px;padding:8px 4px;margin-right:-2px;touch-action:none;user-select:none;align-self:center}
+  .btn.sm.watch{border-color:var(--green);color:var(--green)}
+  .film.watched{opacity:.72}
+  .film.watched .ft{text-decoration:line-through}
   .film .grip:active{cursor:grabbing}
   .film .body{flex:1;min-width:0}
   .film .ft{font-weight:600;font-size:15.5px;line-height:1.25}
@@ -265,11 +273,9 @@
   .hmonkey{font-size:12.5px;line-height:1.5;color:var(--gold);border-left:2px solid var(--gold);padding-left:9px;margin:9px 0}
   .hnote{font-size:12.5px;line-height:1.5;color:var(--muted);margin:9px 0}
   .hmap{border-radius:11px;overflow:hidden;border:1px solid var(--line2);margin-top:11px}
-  .hmapin{position:relative;overflow:hidden;margin:0 auto;background:#e8e3dc}
-  .hmapin img{position:absolute;width:256px;height:256px;max-width:none}
-  .hpin{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--terra);border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
-  .hattr{position:absolute;right:0;bottom:0;font-size:9px;padding:1px 5px;background:rgba(255,255,255,.75);color:#333;border-radius:4px 0 0 0}
-  .hmaplink{display:block;padding:9px 11px;font-size:12.5px;font-weight:600;color:var(--green);text-decoration:none;background:var(--bg);border-top:1px solid var(--line2)}
+  .hmapcanvas{height:230px;background:#0d0f16}
+  .hmapbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;font-size:12px;color:var(--muted);background:var(--bg);border-top:1px solid var(--line2)}
+  .hmapbar a{font-size:12.5px;font-weight:600;color:var(--green);text-decoration:none;white-space:nowrap}
   /* Free vs paid has to read at a glance on a phone, so it is a solid filled
      pill rather than a subtle chip. Green = free, red = costs money. */
   .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 9px;border-radius:7px;margin-left:6px;vertical-align:middle;white-space:nowrap}
@@ -483,6 +489,7 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="hikes.js"></script>
+<script src="trails.js"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -724,12 +731,14 @@ function mvAdd(){
 function mvMut(id,fn){const l=DB.get('movies',[]);const f=l.find(x=>x.id===id);if(f){fn(f);DB.set('movies',l);mvRender();}}
 function mvMove(id,lane){mvMut(id,f=>{f.lane=lane;f.passed=false;f.order=now();});}
 function mvPass(id){mvMut(id,f=>f.passed=true);}
+function mvWatch(id){mvMut(id,f=>{f.watched=true;f.watchedAt=now();});}
+function mvUnwatch(id){mvMut(id,f=>{f.watched=false;delete f.watchedAt;});}
 function mvDel(id){DB.set('movies',DB.get('movies',[]).filter(x=>x.id!==id));mvRender();}
 function mvRecap(t,k){window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(t+(k==='S'?' latest season recap':' recap')),'_blank');}
 function mvReorder(ids){const l=DB.get('movies',[]);ids.forEach((id,i)=>{const f=l.find(x=>x.id===id);if(f)f.order=i;});DB.set('movies',l);}
-function mvCount(code){return DB.get('movies',[]).filter(x=>code==='passed'?x.passed:(!x.passed&&x.lane===code)).length;}
+function mvCount(code){return DB.get('movies',[]).filter(x=>code==='passed'?x.passed:code==='watched'?x.watched:(!x.passed&&!x.watched&&x.lane===code)).length;}
 function mvRender(){
-  document.getElementById('mv-subtabs').innerHTML=[['t','Together'],['f','Fares'],['c','Charlotte'],['passed','Passed']]
+  document.getElementById('mv-subtabs').innerHTML=[['t','Together'],['f','Fares'],['c','Charlotte'],['watched','Watched'],['passed','Passed']]
     .map(([k,l])=>`<button class="subtab ${mvTab===k?'on':''}" onclick="mvTab='${k}';mvRender()">${l}<span class="n">${mvCount(k)}</span></button>`).join('');
   const box=document.getElementById('mv-list');
   if(mvTab==='passed'){
@@ -737,22 +746,40 @@ function mvRender(){
     box.innerHTML=p.length?('<div>'+p.map(f=>`<span class="ptag">${esc(f.t)}<button onclick="mvMove('${f.id}','t')" title="bring back">↩</button><button onclick="mvDel('${f.id}')">×</button></span>`).join('')+'</div>'):'<div class="empty"><span class="big">🍿</span>Nothing passed. Ruthless.</div>';
     return;
   }
-  const list=DB.get('movies',[]).filter(x=>!x.passed&&x.lane===mvTab).sort((a,b)=>a.order-b.order);
+  if(mvTab==='watched'){
+    const w=DB.get('movies',[]).filter(x=>x.watched).sort((a,b)=>(b.watchedAt||0)-(a.watchedAt||0));
+    box.innerHTML=w.length?w.map(f=>{
+      const d=f.watchedAt?new Date(f.watchedAt).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'';
+      return `<div class="film watched" data-id="${f.id}">
+        ${posterCell(f)}
+        <div class="body"><div class="ft">${esc(f.t)}</div>
+          <div class="fm">${d?'Watched '+d:''}${f.y?' · '+f.y:''}</div></div>
+        <div class="acts">
+          <button class="btn sm" onclick="mvUnwatch('${f.id}')">↩ Not yet</button>
+          <button class="xdel" onclick="mvDel('${f.id}')">×</button></div>
+      </div>`;
+    }).join(''):'<div class="empty"><span class="big">🍿</span>Nothing watched yet. Go on then.</div>';
+    return;
+  }
+  const list=DB.get('movies',[]).filter(x=>!x.passed&&!x.watched&&x.lane===mvTab).sort((a,b)=>a.order-b.order);
   if(!list.length){box.innerHTML='<div class="empty"><span class="big">🎬</span>No films here yet — add one above.</div>';return;}
   box.innerHTML=list.map((f,i)=>{
     let react='';
     if(mvTab!=='t')react+=`<button class="btn sm" onclick="mvMove('${f.id}','t')">▶ Together</button>`;
     if(mvTab==='t')react+=`<button class="btn sm" onclick="mvMove('${f.id}','f')">Fares</button><button class="btn sm" onclick="mvMove('${f.id}','c')">Charlotte</button>`;
+    // Grip lives on the left next to the rank. It used to sit right beside the
+    // delete cross, which meant reaching for "reorder" and hitting "remove".
     return `<div class="film" data-id="${f.id}">
+      <span class="grip" title="drag to rank">⠿</span>
       <span class="rank">${i+1}</span>
       ${posterCell(f)}
       <div class="body"><div class="ft">${esc(f.t)}</div>
         <div class="fm">${f.p?`<span class="plat" style="background:${platColor(f.p)}">${esc(f.p)}</span>`:''}${f.y||''}${f.g?' · '+esc(f.g):''}${f.addedBy?`<span class="addby who-${f.addedBy}">added by ${f.addedBy==='C'?'Charlotte':'Fares'}</span>`:''}</div></div>
       <div class="acts">${react}
         <button class="btn sm" onclick="mvRecap('${esc(f.t).replace(/'/g,"\\'")}','${f.k||''}')">▷</button>
+        <button class="btn sm watch" onclick="mvWatch('${f.id}')">✓ Watched</button>
         <button class="btn sm" onclick="mvPass('${f.id}')">Pass</button>
-        <button class="xdel" onclick="mvDel('${f.id}')">×</button>
-        <span class="grip" title="drag to rank">⠿</span></div>
+        <button class="xdel" onclick="mvDel('${f.id}')">×</button></div>
     </div>`;
   }).join('');
   makeSortable(box,mvReorder);
@@ -1071,33 +1098,51 @@ function spEffort(h){
   if(/day/.test(h.time))return 100;
   return Math.max(6,Math.min(100,Math.round(max/12*100)));
 }
-// Static map built from raw OpenStreetMap tiles as plain <img> tags.
-// Deliberately NOT the openstreetmap.org embed iframe: that switched to a
-// WebGL renderer and shows "your browser does not support WebGL" where WebGL
-// is unavailable or blocked. Images always render, on any phone, with no JS.
-// Tiles load only for the card you expand.
-const MAP_W=420,MAP_H=190,MAP_Z=13;
+// Real map with the trail drawn on it, using the Leaflet that the Trips tab
+// already loads. Raster tiles, so no WebGL requirement, and you can pan and
+// pinch it like a normal map.
+//
+// The line comes from trails.js, which is OSM path data pulled by
+// fetch_trails.js. Google Maps cannot draw these: it knows the road to the car
+// park but not the path up the hill. That is the whole reason this is not a
+// Google embed.
 function spMap(h){
   if(!h.lat||!h.lon)return '';
-  const n=Math.pow(2,MAP_Z);
-  const xf=(h.lon+180)/360*n;
-  const la=h.lat*Math.PI/180;
-  const yf=(1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n;
-  // world pixel of the top-left corner of our viewport
-  const left=xf*256-MAP_W/2, top=yf*256-MAP_H/2;
-  let imgs='';
-  for(let tx=Math.floor(left/256);tx<=Math.floor((left+MAP_W)/256);tx++){
-    for(let ty=Math.floor(top/256);ty<=Math.floor((top+MAP_H)/256);ty++){
-      if(ty<0||ty>=n)continue;
-      const wx=((tx%n)+n)%n;   // wrap at the date line
-      imgs+=`<img loading="lazy" src="https://tile.openstreetmap.org/${MAP_Z}/${wx}/${ty}.png" style="left:${tx*256-left}px;top:${ty*256-top}px" alt="">`;
-    }
-  }
+  const t=(window.CF_TRAILS&&CF_TRAILS.trails&&CF_TRAILS.trails[h.id])||null;
+  const has=t&&t.segs&&t.segs.length;
   return `<div class="hmap">
-    <div class="hmapin" style="width:${MAP_W}px;height:${MAP_H}px">${imgs}<span class="hpin"></span>
-      <span class="hattr">© OpenStreetMap</span></div>
-    <a class="hmaplink" href="https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}" target="_blank" rel="noopener">Directions to the trailhead →</a>
+    <div class="hmapcanvas" id="map-${esc(h.id)}"></div>
+    <div class="hmapbar">
+      <span>${has?'Trail from OpenStreetMap':'No trail mapped here yet'}</span>
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}" target="_blank" rel="noopener">Directions →</a>
+    </div>
   </div>`;
+}
+// Leaflet has to attach after the HTML is in the document, so this runs at the
+// end of spRenderTiers rather than inside the template.
+let spMapObj=null;
+function spMapInit(h){
+  const el=document.getElementById('map-'+h.id);
+  if(!el||!window.L)return;
+  if(spMapObj){try{spMapObj.remove();}catch(e){}spMapObj=null;}
+  const map=L.map(el,{scrollWheelZoom:false,attributionControl:false}).setView([h.lat,h.lon],14);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenStreetMap'}).addTo(map);
+  L.control.attribution({prefix:false}).addAttribution('© OpenStreetMap').addTo(map);
+
+  const t=(window.CF_TRAILS&&CF_TRAILS.trails&&CF_TRAILS.trails[h.id])||null;
+  const segs=(t&&t.segs)||[];
+  if(segs.length){
+    // Casing underneath, bright line on top, so it stays readable over both
+    // green forest and grey rock.
+    segs.forEach(s=>L.polyline(s,{color:'#000',opacity:.35,weight:6}).addTo(map));
+    segs.forEach(s=>L.polyline(s,{color:'#ff5a3d',weight:3,opacity:.95}).addTo(map));
+    if(t.bbox)map.fitBounds([[t.bbox.minLat,t.bbox.minLon],[t.bbox.maxLat,t.bbox.maxLon]],{padding:[18,18]});
+  }
+  // Trailhead last so it sits above the line. This is where you park.
+  L.circleMarker([h.lat,h.lon],{radius:7,color:'#fff',weight:2.5,fillColor:'#2f7fe0',fillOpacity:1})
+    .addTo(map).bindTooltip('Start here',{direction:'top'});
+  setTimeout(()=>map.invalidateSize(),60);
+  spMapObj=map;
 }
 function spStat(v,lbl){return v?`<div class="hstat"><b>${esc(v)}</b><span>${lbl}</span></div>`:'';}
 function spHikeCard(h,locked){
@@ -1148,6 +1193,11 @@ function spRenderTiers(){
       <span class="tiercount">${done}/${list.length}</span></div>`;
     return `<div class="tier ${locked?'locked':''}">${head}${list.map(h=>spHikeCard(h,locked)).join('')}</div>`;
   }).join('');
+  // Attach the map to whichever card is now open.
+  if(spOpenCard){
+    const h=CF_HIKES.hikes.find(x=>x.id===spOpenCard);
+    if(h&&spMaxTier()>=h.tier)spMapInit(h);
+  }
 }
 
 /* ================= SPORT: log ================= */
