@@ -25,19 +25,24 @@ const klDate = ms => new Intl.DateTimeFormat('en-CA', {
   timeZone: KL_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date(ms));
 
-async function prices(eventId) {
+// Returns every visible ticket type, so the app can show the real price list
+// rather than just "from RM40".
+async function tickets(eventId) {
   const r = await fetch(`${API}/v1/buyer/event-page/${eventId}/ticket-types/default`, {
     headers: { app_id: 'ticketmelon' },
   });
   if (!r.ok) return null;
   const j = await r.json();
   const types = Array.isArray(j) ? j : (Array.isArray(j.message) ? j.message : []);
-  const vals = types
-    .filter(t => t && !t.is_hidden)
-    .map(t => Number(t.price))
-    .filter(n => Number.isFinite(n));
-  return vals.length ? Math.min(...vals) : null;   // cheapest way in
+  const out = types
+    .filter(t => t && !t.is_hidden && Number.isFinite(Number(t.price)))
+    .map(t => ({ name: String(t.name || 'Ticket').trim().slice(0, 40), price: Number(t.price) }));
+  return out.length ? out : null;
 }
+
+const klTime = ms => new Intl.DateTimeFormat('en-GB', {
+  timeZone: KL_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+}).format(new Date(ms));
 
 async function fetchEvents() {
   const r = await fetch(`${API}/v1/buyer/home-page/events`);
@@ -61,6 +66,13 @@ async function fetchEvents() {
     img: e.img_poster || e.img_banner || '',
     cat: (Array.isArray(e.categories) && e.categories[0]) || 'Event',
     cur: (e.currency && e.currency.code) || 'MYR',
+    desc: e.description || '',
+    addr: (e.venue && e.venue.address) || '',
+    lat: (e.venue && e.venue.latitude) || null,
+    lon: (e.venue && e.venue.longitude) || null,
+    start: klTime(e.show_starttime),
+    end: e.show_endtime > 0 ? klTime(e.show_endtime) : '',
+    age: e.age_restriction || e.custom_age_restriction || null,
   }));
 
   // Only price the ones we are actually going to show. 60-ish calls, spaced.
@@ -69,10 +81,15 @@ async function fetchEvents() {
   for (const ev of upcoming) {
     const id = byName.get(ev.name + '|' + ev.date);
     if (!id) continue;
-    // clean() ran before we had prices, so set tier here as well as price.
+    // clean() ran before we had prices, so set these here as well.
     try {
-      const p = await prices(id);
-      if (p !== null) { ev.price = p; ev.tier = p > 0 ? 'paid' : 'free'; }
+      const t = await tickets(id);
+      if (t) {
+        const p = Math.min(...t.map(x => x.price));
+        ev.tickets = t;
+        ev.price = p;
+        ev.tier = p > 0 ? 'paid' : 'free';
+      }
     } catch (e) { /* keep the listing, price just stays unknown */ }
     await sleep(120);
   }

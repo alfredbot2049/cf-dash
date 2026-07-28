@@ -54,6 +54,8 @@ function parse(html, catLabel) {
       // JSON-LD offers give us free-vs-paid without a second request.
       const offers = [].concat(e.offers || []);
       const nums = offers.map(o => Number(o && o.price)).filter(n => Number.isFinite(n));
+      const addr = loc.address || {};
+      const geo = loc.geo || {};
       out.push({
         name: e.name,
         date: e.startDate.slice(0, 10),
@@ -63,6 +65,15 @@ function parse(html, catLabel) {
         cat: catLabel,
         price: nums.length ? Math.min(...nums) : null,
         cur: (offers[0] && offers[0].priceCurrency) || '',
+        desc: e.description || '',
+        addr: [addr.streetAddress, addr.addressLocality, addr.postalCode].filter(Boolean).join(', '),
+        // startDate looks like 2026-07-30T20:00:00+08:00, so the clock time is
+        // already local to KL. Slice rather than parse, which would drag it
+        // through the viewer's timezone.
+        start: (e.startDate.slice(11, 16) || ''),
+        end: (e.endDate || '').slice(11, 16),
+        lat: geo.latitude || null,
+        lon: geo.longitude || null,
       });
     }
   }

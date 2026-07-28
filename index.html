@@ -171,7 +171,7 @@
   .item .meta{color:var(--muted);font-size:12.5px;margin-top:4px}
 
   /* events */
-  .evt{display:flex;gap:14px;background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--sh1)}
+  .evt{background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--sh1)}
   .evt .date{text-align:center;min-width:50px}
   .evt .date .d{font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1}
   .evt .date .m{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -269,7 +269,20 @@
   .hmaplink{display:block;padding:9px 11px;font-size:12.5px;font-weight:600;color:var(--green);text-decoration:none;background:var(--bg);border-top:1px solid var(--line2)}
   .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
   .tag.free{background:var(--green);color:#fff}
-  .tag.paid{background:var(--card);color:var(--muted);border:1px solid var(--line2)}
+  .tag.paid{background:var(--terra);color:#fff}
+  .erow{display:flex;gap:12px;align-items:center;cursor:pointer}
+  .ethumb{flex:0 0 52px;height:52px;border-radius:9px;overflow:hidden;background:var(--bg)}
+  .ethumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .edetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
+  .ehero{width:100%;max-height:210px;object-fit:cover;border-radius:11px;display:block;margin-bottom:11px}
+  .edesc{font-size:12.5px;line-height:1.55;color:var(--muted);margin:0 0 11px}
+  .erows div{font-size:12.5px;line-height:1.5;padding:5px 0;border-bottom:1px solid var(--line2)}
+  .erows b{display:inline-block;min-width:74px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .tixbox{margin-top:11px;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+  .tixhead{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:7px 11px;background:var(--bg)}
+  .tix{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:7px 11px;border-top:1px solid var(--line2)}
+  .tix b{font-weight:700;white-space:nowrap}
+  .eacts{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
   .tag.src{background:transparent;color:var(--muted);border:1px solid var(--line2);font-weight:600}
   .evt .nm a{color:var(--green);text-decoration:none}
   .evt .nm a:hover{text-decoration:underline}
@@ -717,7 +730,50 @@ function mvRender(){
 }
 
 /* ================= WHAT'S ON ================= */
-let wkFilter='All',wkTier='All';
+let wkFilter='All',wkTier='All',wkOpen=null;
+function wkToggle(k){wkOpen=wkOpen===k?null:k;wkRender();}
+const SRCNAME={ticketmelon:'Ticketmelon',eventbrite:'Eventbrite'};
+// Free is green, paid is red and shows the real amount wherever we have it.
+// Eventbrite publishes no price at all, so those read PAID rather than a made
+// up number.
+function wkPrice(e){
+  if(e.tier==='free')return '<span class="tag free">FREE</span>';
+  if(e.tier!=='paid')return '';
+  return `<span class="tag paid">${e.price?esc((e.cur||'')+' '+e.price):'PAID'}</span>`;
+}
+function wkCard(e,i){
+  const key=e.id||(e.src+'|'+e.name+'|'+e.date);
+  const open=wkOpen===key;
+  const d=new Date(e.date+'T00:00'),wd=d.toLocaleDateString(undefined,{weekday:'short'});
+  const src=e.src?`<span class="tag src">${esc(SRCNAME[e.src]||e.src)}</span>`:'';
+  const when=[wd,e.start?e.start+(e.end?'-'+e.end:''):''].filter(Boolean).join(' ');
+  const tix=(e.tickets||[]).map(t=>`<div class="tix"><span>${esc(t.name)}</span><b>${t.price?esc((e.cur||'')+' '+t.price):'Free'}</b></div>`).join('');
+  return `<div class="evt ${open?'open':''}">
+    <div class="erow" onclick="wkToggle('${esc(key).replace(/'/g,"\\'")}')">
+      ${e.img?`<div class="ethumb"><img loading="lazy" src="${esc(e.img)}" alt="" onerror="this.parentNode.remove()"></div>`:''}
+      <div class="date"><div class="d">${d.getDate()}</div><div class="m">${d.toLocaleString(undefined,{month:'short'})}</div></div>
+      <div class="body">
+        <div class="nm" style="font-weight:600;font-size:15px">${esc(e.name)} ${wkPrice(e)}</div>
+        <div class="meta">${when}${e.venue?' · '+esc(e.venue):''}${e.cat&&e.cat!=='Event'?' · '+esc(e.cat):''}${src}</div>
+      </div>
+      ${e.mine?`<button class="xdel" onclick="event.stopPropagation();wkDel('${e.id}')">×</button>`:''}
+    </div>
+    ${open?`<div class="edetail">
+      ${e.img?`<img class="ehero" loading="lazy" src="${esc(e.img)}" alt="" onerror="this.remove()">`:''}
+      ${e.desc?`<p class="edesc">${esc(e.desc)}</p>`:''}
+      <div class="erows">
+        ${e.start?`<div><b>Time</b>${esc(e.start)}${e.end?' to '+esc(e.end):''}</div>`:''}
+        ${e.addr?`<div><b>Address</b>${esc(e.addr)}</div>`:''}
+        ${e.age?`<div><b>Age</b>${esc(e.age)}+</div>`:''}
+      </div>
+      ${tix?`<div class="tixbox"><div class="tixhead">Tickets</div>${tix}</div>`:''}
+      <div class="eacts">
+        ${e.url?`<a class="btn sm" href="${esc(e.url)}" target="_blank" rel="noopener">Open on ${esc(SRCNAME[e.src]||'site')}</a>`:''}
+        ${e.lat&&e.lon?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lon}" target="_blank" rel="noopener">Directions</a>`:''}
+      </div>
+    </div>`:''}
+  </div>`;
+}
 function wkAllEvents(){
   const today=new Date().toISOString().slice(0,10);
   const real=((window.CF_EVENTS&&CF_EVENTS.events)||[]).map(e=>({...e,mine:false}));
@@ -736,19 +792,7 @@ function wkRender(){
   if(!cats.includes(wkFilter))wkFilter='All';
   document.getElementById('wk-filters').innerHTML=cats.map(c=>`<span class="chip ${wkFilter===c?'on':''}" onclick="wkFilter='${c}';wkRender()">${c}</span>`).join('');
   const list=pool.filter(e=>wkFilter==='All'||e.cat===wkFilter);
-  document.getElementById('wk-list').innerHTML=list.length?list.map(e=>{
-    const d=new Date(e.date+'T00:00'),wd=d.toLocaleDateString(undefined,{weekday:'short'});
-    const title=e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name);
-    // Show the amount only when we actually have it. Eventbrite tells us an
-    // event is paid but never how much, so that just reads "Paid".
-    const tag=e.tier==='free'?'<span class="tag free">FREE</span>'
-      :e.tier==='paid'?`<span class="tag paid">${e.price?esc(e.cur||'')+' '+e.price:'PAID'}</span>`:'';
-    const src=e.src?`<span class="tag src">${esc(e.src==='ticketmelon'?'Ticketmelon':e.src==='eventbrite'?'Eventbrite':e.src)}</span>`:'';
-    return `<div class="evt"><div class="date"><div class="d">${d.getDate()}</div><div class="m">${d.toLocaleString(undefined,{month:'short'})}</div></div>
-      <div class="body"><div class="nm" style="font-weight:600;font-size:15px">${title}${tag}</div>
-        <div class="meta">${wd}${e.venue?' · '+esc(e.venue):''}${e.cat&&e.cat!=='Event'?' · '+esc(e.cat):''}${src}</div></div>
-      ${e.mine?`<button class="xdel" onclick="wkDel('${e.id}')">×</button>`:''}</div>`;
-  }).join(''):'<div class="empty"><span class="big">📅</span>Nothing matches those filters.</div>';
+  document.getElementById('wk-list').innerHTML=list.length?list.map((e,i)=>wkCard(e,i)).join(''):'<div class="empty"><span class="big">📅</span>Nothing matches those filters.</div>';
   const ts=window.CF_EVENTS&&CF_EVENTS.fetchedAt;
   const srcs=((window.CF_EVENTS&&CF_EVENTS.sources)||[]).map(s=>s.name).join(' + ')||'Eventbrite';
   document.getElementById('wk-note-box').innerHTML='<b>Auto-updated:</b> real KL events from '+esc(srcs)+(ts?' · refreshed '+new Date(ts).toLocaleDateString():'')+'. Tap an event to open its page. Refreshes on its own — no need to add anything by hand.';

@@ -33,6 +33,23 @@
 // listing. Shared by every source so the rules stay in one place.
 const ONLINE = /webinar|online|virtual|zoom|livestream|live stream/i;
 
+// Descriptions arrive as HTML from both sources. Strip it here rather than in
+// the app: the app renders these into innerHTML, so letting raw third-party
+// markup through would be an injection hole on a page holding their data.
+function text(s, max) {
+  if (!s) return '';
+  return String(s)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#\d+;/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
 function clean(events, today) {
   const out = [];
   for (const e of events) {
@@ -49,6 +66,15 @@ function clean(events, today) {
       price: typeof e.price === 'number' ? e.price : null,
       tier: e.tier || (typeof e.price === 'number' ? (e.price > 0 ? 'paid' : 'free') : null),
       cur: e.cur || '',
+      // detail-view extras, all optional
+      desc: text(e.desc, 700),
+      addr: text(e.addr, 160),
+      start: e.start || '',        // 'HH:MM' local
+      end: e.end || '',
+      lat: e.lat || null,
+      lon: e.lon || null,
+      age: e.age || null,
+      tickets: Array.isArray(e.tickets) ? e.tickets.slice(0, 12) : null,
     });
   }
   return out;
@@ -58,4 +84,4 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-module.exports = { clean, sleep, UA, ONLINE };
+module.exports = { clean, sleep, UA, ONLINE, text };
