@@ -75,6 +75,8 @@ function clean(events, today) {
       lon: e.lon || null,
       age: e.age || null,
       tickets: Array.isArray(e.tickets) ? e.tickets.slice(0, 12) : null,
+      priceMax: typeof e.priceMax === 'number' ? e.priceMax : null,
+      soldOut: !!e.soldOut,
     });
   }
   return out;

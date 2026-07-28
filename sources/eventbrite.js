@@ -22,22 +22,30 @@ const CATS = [
   ['nightlife--', 'Nightlife'],
 ];
 
-// Eventbrite's browse JSON-LD carries no `offers` and their event pages no
-// longer expose price anywhere in the HTML (checked 2026-07-28). The one
-// reliable free/paid signal left is their own `free--events` filter, so we
-// pull that separately and treat "listed there" as free, "not listed" as paid.
-async function freeNames() {
-  const names = new Set();
-  for (let page = 1; page <= 5; page++) {
-    const r = await fetch(`https://www.eventbrite.com/d/malaysia--kuala-lumpur/free--events/?page=${page}`,
-      { headers: { 'User-Agent': UA, 'Accept-Language': 'en' } });
-    if (!r.ok) break;
-    const found = parse(await r.text(), 'Event');
-    if (!found.length) break;
-    for (const e of found) names.add(e.name.trim().toLowerCase());
-    await sleep(400);
+// Prices, start times and sold-out status come from the JSON endpoint that
+// Eventbrite's own site calls. No key, no auth.
+//
+// The browse-page JSON-LD has no `offers` and the event HTML has no price in
+// it at all, which is why this looked impossible at first. This endpoint has
+// all of it. Takes up to 10 event ids per call, so we chunk.
+const DEST = 'https://www.eventbrite.com/api/v3/destination/events/';
+
+const idFromUrl = u => (String(u).match(/-tickets-(\d+)/) || [])[1] || null;
+
+async function details(ids) {
+  const out = new Map();
+  for (let i = 0; i < ids.length; i += 10) {
+    const chunk = ids.slice(i, i + 10);
+    const url = `${DEST}?event_ids=${chunk.join(',')}&expand=ticket_availability`;
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+      if (!r.ok) { await sleep(500); continue; }
+      const j = await r.json();
+      for (const e of (j.events || [])) out.set(String(e.id), e);
+    } catch (err) { /* this chunk keeps whatever we already knew */ }
+    await sleep(500);
   }
-  return names;
+  return out;
 }
 
 function parse(html, catLabel) {
@@ -98,16 +106,33 @@ async function fetchEvents() {
 
   if (blocked === CATS.length) throw new Error(`eventbrite blocked us on all ${blocked} requests (datacenter IP?)`);
 
-  // Second pass for free/paid. If this fails we still return the listings,
-  // just with price unknown rather than wrong.
-  let free = new Set();
-  try { free = await freeNames(); } catch (e) { /* price stays null */ }
+  // Second pass: real prices and times. If it fails we still return the
+  // listings, just without price rather than with a wrong one.
   const out = [...seen.values()];
-  // We learn free-vs-paid but never the actual amount, so set `tier` only and
-  // leave `price` null. Faking a number here would put a wrong ticket price in
-  // front of you, which is worse than showing none.
-  if (free.size) {
-    for (const ev of out) ev.tier = free.has(ev.name.toLowerCase()) ? 'free' : 'paid';
+  const byId = new Map();
+  for (const ev of out) {
+    const id = idFromUrl(ev.url);
+    if (id) byId.set(id, ev);
+  }
+  const got = await details([...byId.keys()]);
+  for (const [id, ev] of byId) {
+    const d = got.get(id);
+    if (!d) continue;
+    const ta = d.ticket_availability || {};
+    const min = ta.minimum_ticket_price;
+    if (ta.is_free === true) { ev.price = 0; ev.tier = 'free'; ev.cur = (min && min.currency) || ''; }
+    else if (min && min.major_value != null) {
+      ev.price = Number(min.major_value);
+      ev.cur = min.currency || '';
+      ev.tier = ev.price > 0 ? 'paid' : 'free';
+      const max = ta.maximum_ticket_price;
+      // Show a range only when the top tier really costs more.
+      if (max && Number(max.major_value) > ev.price) ev.priceMax = Number(max.major_value);
+    }
+    if (ta.is_sold_out) ev.soldOut = true;
+    if (d.start_time) ev.start = d.start_time.slice(0, 5);
+    if (d.end_time) ev.end = d.end_time.slice(0, 5);
+    if (d.summary && !ev.desc) ev.desc = d.summary;
   }
   return out;
 }

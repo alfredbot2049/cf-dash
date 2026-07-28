@@ -18,6 +18,21 @@ jobs:
       # source fails, and Eventbrite reliably fails from Actions (it 405s
       # datacenter IPs). Without this the job would stop before committing and
       # we would throw away the Ticketmelon events it did fetch.
+      # Supabase pauses free-tier projects after 7 days with no activity, and a
+      # paused project stops resolving in DNS entirely, which takes sign-in and
+      # sync down with it. That already happened once. This runs Mon and Thu,
+      # so one request per run keeps the project awake for good.
+      # No secret needed: the anon key is public by design and row security
+      # means this read returns nothing.
+      - name: keep supabase awake
+        continue-on-error: true
+        run: |
+          ANON=$(node -e "eval(require('fs').readFileSync('supabase-config.js','utf8').replace('window.','global.'));console.log(CF_SB.anon)")
+          URL=$(node -e "eval(require('fs').readFileSync('supabase-config.js','utf8').replace('window.','global.'));console.log(CF_SB.url)")
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/cf_state?select=id&limit=1" -H "apikey: $ANON" --max-time 30)
+          echo "supabase ping: HTTP $code"
+          [ "$code" = "200" ] || echo "::warning::Supabase ping returned $code, project may be paused"
+
       - name: fetch events
         id: fetch
         continue-on-error: true

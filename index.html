@@ -222,9 +222,12 @@
   .chk .txt{flex:1;font-size:15px}
   .chk.on .txt{text-decoration:line-through;color:var(--muted)}
   /* recipe suggestions */
-  .sugg{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--card);border:1px solid var(--cardEdge);border-radius:12px;padding:11px 13px;box-shadow:var(--sh1);flex:1 1 210px;transition:all .14s}
+  /* color must be explicit: this is a <button>, and buttons do not inherit the
+     page text colour, so on the dark theme the title fell back to the browser
+     default near-black on a near-black card. */
+  .sugg{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--cardEdge);border-radius:12px;padding:11px 13px;box-shadow:var(--sh1);flex:1 1 210px;transition:all .14s}
   .sugg:hover{border-color:var(--green);transform:translateY(-2px)}
-  .sugg b{font-size:14px;font-weight:600}
+  .sugg b{font-size:14px;font-weight:600;color:var(--ink)}
   .sugg span{font-size:11.5px;color:var(--muted)}
   .sugg em{font-style:normal;font-size:11px;font-weight:700;color:var(--green);margin-top:3px}
   .tier{margin-bottom:22px}
@@ -267,15 +270,20 @@
   .hpin{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--terra);border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
   .hattr{position:absolute;right:0;bottom:0;font-size:9px;padding:1px 5px;background:rgba(255,255,255,.75);color:#333;border-radius:4px 0 0 0}
   .hmaplink{display:block;padding:9px 11px;font-size:12.5px;font-weight:600;color:var(--green);text-decoration:none;background:var(--bg);border-top:1px solid var(--line2)}
-  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
-  .tag.free{background:var(--green);color:#fff}
-  .tag.paid{background:var(--terra);color:#fff}
+  /* Free vs paid has to read at a glance on a phone, so it is a solid filled
+     pill rather than a subtle chip. Green = free, red = costs money. */
+  .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 9px;border-radius:7px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+  .tag.free{background:#1f9d55;color:#fff}
+  .tag.paid{background:#d1483f;color:#fff}
+  .tag.sold{background:transparent;color:var(--muted);border:1px solid var(--line2)}
+  /* login wall: hide the app itself, keep the sign-in modal visible */
+  body.gated .wrap,body.gated .nav{display:none!important}
+  body.gated .modal-wrap#authbox .btn.ghost{display:none}
   .erow{display:flex;gap:12px;align-items:center;cursor:pointer}
   .ethumb{flex:0 0 52px;height:52px;border-radius:9px;overflow:hidden;background:var(--bg)}
   .ethumb img{width:100%;height:100%;object-fit:cover;display:block}
   .edetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
-  .ehero{width:100%;max-height:210px;object-fit:cover;border-radius:11px;display:block;margin-bottom:11px}
-  .edesc{font-size:12.5px;line-height:1.55;color:var(--muted);margin:0 0 11px}
+  .edesc{font-size:12.5px;line-height:1.55;color:var(--ink2);margin:0 0 11px}
   .erows div{font-size:12.5px;line-height:1.5;padding:5px 0;border-bottom:1px solid var(--line2)}
   .erows b{display:inline-block;min-width:74px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
   .tixbox{margin-top:11px;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
@@ -560,6 +568,7 @@ function subscribeRealtime(){try{sb.channel('cf-shared').on('postgres_changes',{
 async function pollPull(){if(!sbReady())return;try{const {data}=await sb.from('cf_state').select('data,updated_at').eq('id','shared').single();if(data&&data.updated_at!==lastSeen){lastSeen=data.updated_at;applyRemote(data.data);}}catch(e){}}
 async function startSession(user){
   cfUser={id:user.id,email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'Fares'};
+  setGate(false);
   DB.set('me',/^char/i.test(cfUser.name)?'C':'F');renderAcct();
   await pullMerge();subscribeRealtime();
   clearInterval(pollTimer);pollTimer=setInterval(pollPull,12000);      // safety net if realtime drops
@@ -568,7 +577,7 @@ async function startSession(user){
 }
 function renderAcct(){const b=document.getElementById('acctBtn');if(b)b.textContent=cfUser?('● '+cfUser.name):'Sign in';}
 function acctClick(){if(cfUser){if(confirm('Sign out of C&F sync?'))signOut();}else openAuth();}
-async function signOut(){try{await sb.auth.signOut();}catch(e){}cfUser=null;renderAcct();}
+async function signOut(){try{await sb.auth.signOut();}catch(e){}cfUser=null;renderAcct();setGate(true);}
 function openAuth(){if(!sb){alert('Sync needs internet — open the live link.');return;}document.getElementById('authbox').classList.add('show');authErr('');}
 function closeAuth(){document.getElementById('authbox').classList.remove('show');}
 function authSwitch(m){authMode=m;document.getElementById('auth-name-row').style.display=m==='up'?'':'none';document.querySelectorAll('.authseg').forEach(x=>x.classList.toggle('on',x.dataset.m===m));document.getElementById('auth-go').textContent=m==='up'?'Create account':'Sign in';authErr('');}
@@ -584,11 +593,31 @@ async function authGo(){
   }catch(e){authErr((e&&e.message)||'Failed');}
   go.disabled=false;go.textContent=label;
 }
+// Login wall. The app stays hidden until Supabase confirms a session, so
+// anyone who lands on the URL sees only the sign-in box.
+//
+// Be clear about what this is and is not. It stops a person, it does not stop
+// a determined one: this is a static site on a public repo, so the HTML and
+// the hike/event lists can always be read from source or from the repo. What
+// it protects is the personal stuff, and that is really protected server-side
+// by Supabase row security, which returns nothing without a valid session.
+// Real edge-level blocking would mean moving off GitHub Pages.
+function setGate(on){
+  document.body.classList.toggle('gated',on);
+  if(on)document.getElementById('authbox').classList.add('show');
+  else document.getElementById('authbox').classList.remove('show');
+}
 async function sbBoot(){
   renderAcct();
-  if(!window.CF_SB||!window.supabase)return;
+  // No Supabase library or config at all (offline, or the CDN failed): fall
+  // back to the old open behaviour rather than locking them out of their own
+  // app with no way in.
+  if(!window.CF_SB||!window.supabase){setGate(false);return;}
+  setGate(true);
   try{sb=window.supabase.createClient(CF_SB.url,CF_SB.anon,{auth:{persistSession:true,autoRefreshToken:true}});
-    const {data}=await sb.auth.getSession();if(data&&data.session)await startSession(data.session.user);}catch(e){}
+    const {data}=await sb.auth.getSession();
+    if(data&&data.session){await startSession(data.session.user);}
+  }catch(e){/* stay gated: a failed check must not open the door */}
 }
 
 /* ---------- home ---------- */
@@ -737,9 +766,11 @@ const SRCNAME={ticketmelon:'Ticketmelon',eventbrite:'Eventbrite'};
 // Eventbrite publishes no price at all, so those read PAID rather than a made
 // up number.
 function wkPrice(e){
-  if(e.tier==='free')return '<span class="tag free">FREE</span>';
-  if(e.tier!=='paid')return '';
-  return `<span class="tag paid">${e.price?esc((e.cur||'')+' '+e.price):'PAID'}</span>`;
+  const sold=e.soldOut?'<span class="tag sold">SOLD OUT</span>':'';
+  if(e.tier==='free')return '<span class="tag free">FREE</span>'+sold;
+  if(e.tier!=='paid')return sold;
+  const amt=e.price?esc((e.cur||'')+' '+e.price+(e.priceMax?'-'+e.priceMax:'')):'PAID';
+  return `<span class="tag paid">${amt}</span>`+sold;
 }
 function wkCard(e,i){
   const key=e.id||(e.src+'|'+e.name+'|'+e.date);
@@ -759,12 +790,13 @@ function wkCard(e,i){
       ${e.mine?`<button class="xdel" onclick="event.stopPropagation();wkDel('${e.id}')">×</button>`:''}
     </div>
     ${open?`<div class="edetail">
-      ${e.img?`<img class="ehero" loading="lazy" src="${esc(e.img)}" alt="" onerror="this.remove()">`:''}
       ${e.desc?`<p class="edesc">${esc(e.desc)}</p>`:''}
       <div class="erows">
         ${e.start?`<div><b>Time</b>${esc(e.start)}${e.end?' to '+esc(e.end):''}</div>`:''}
         ${e.addr?`<div><b>Address</b>${esc(e.addr)}</div>`:''}
         ${e.age?`<div><b>Age</b>${esc(e.age)}+</div>`:''}
+        ${e.price!=null?`<div><b>Price</b>${e.price?esc((e.cur||'')+' '+e.price+(e.priceMax?' to '+e.priceMax:'')):'Free'}</div>`:''}
+        <div><b>Source</b>${esc(SRCNAME[e.src]||e.src||'Added by you')}</div>
       </div>
       ${tix?`<div class="tixbox"><div class="tixhead">Tickets</div>${tix}</div>`:''}
       <div class="eacts">
