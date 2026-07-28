@@ -232,18 +232,41 @@
   .tierhead{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
   .tierhead b{font-family:'Fraunces',serif;font-size:17px}
   .tiercount{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line2);border-radius:20px;padding:3px 10px;white-space:nowrap}
-  .hike{display:flex;gap:12px;background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh1)}
+  .hike{background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh1);transition:border-color .15s}
   .hike.done{border-color:var(--green)}
+  .hike.open{border-color:var(--line2)}
   .hike.done .hname{text-decoration:line-through;opacity:.65}
+  .hrow{display:flex;gap:12px;align-items:flex-start}
   .hbox{flex:0 0 26px;height:26px;margin-top:2px;border-radius:8px;border:1.5px solid var(--line2);background:transparent;font-size:14px;line-height:1;color:var(--green);cursor:pointer}
   .hike.done .hbox{background:var(--green);border-color:var(--green);color:#fff}
   .hbox:disabled{cursor:default;opacity:.6}
-  .hbody{flex:1;min-width:0}
+  .hbody{flex:1;min-width:0;cursor:pointer}
+  .hchev{flex:0 0 22px;background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;padding:4px 0}
   .hname{font-weight:600;font-size:15px}
   .hdiff{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-left:7px}
-  .hreq{font-size:12px;font-weight:600;color:var(--gold);margin-top:4px}
-  .hwarn{font-size:12.5px;line-height:1.45;color:var(--terra);border-left:2px solid var(--terra);padding-left:9px;margin-top:7px}
-  .hnote{font-size:12.5px;line-height:1.5;color:var(--muted);margin-top:5px}
+  .hbadges{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .hbadges:empty{display:none}
+  .hbadge{font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:6px;border:1px solid transparent}
+  .b-req{color:var(--gold);border-color:var(--gold)}
+  .m-watch{color:var(--gold);background:rgba(190,150,60,.13);border-color:transparent}
+  .m-bad{color:#fff;background:var(--terra)}
+  .b-warn{color:var(--terra);border-color:var(--terra)}
+  .hdetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
+  .hbar{height:5px;border-radius:3px;background:var(--line2);overflow:hidden;margin-bottom:12px}
+  .hbar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold))}
+  .hstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:7px;margin-bottom:11px}
+  .hstat{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:7px 9px;text-align:center}
+  .hstat b{display:block;font-size:13px;font-weight:700;line-height:1.25}
+  .hstat span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+  .hwarn{font-size:12.5px;line-height:1.45;color:var(--terra);border-left:2px solid var(--terra);padding-left:9px;margin:9px 0}
+  .hmonkey{font-size:12.5px;line-height:1.5;color:var(--gold);border-left:2px solid var(--gold);padding-left:9px;margin:9px 0}
+  .hnote{font-size:12.5px;line-height:1.5;color:var(--muted);margin:9px 0}
+  .hmap{border-radius:11px;overflow:hidden;border:1px solid var(--line2);margin-top:11px}
+  .hmapin{position:relative;overflow:hidden;margin:0 auto;background:#e8e3dc}
+  .hmapin img{position:absolute;width:256px;height:256px;max-width:none}
+  .hpin{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--terra);border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  .hattr{position:absolute;right:0;bottom:0;font-size:9px;padding:1px 5px;background:rgba(255,255,255,.75);color:#333;border-radius:4px 0 0 0}
+  .hmaplink{display:block;padding:9px 11px;font-size:12.5px;font-weight:600;color:var(--green);text-decoration:none;background:var(--bg);border-top:1px solid var(--line2)}
   .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
   .tag.free{background:var(--green);color:#fff}
   .tag.paid{background:var(--card);color:var(--muted);border:1px solid var(--line2)}
@@ -923,6 +946,10 @@ function blRender(){
 // "all of them" — Tabur and Bunga Buah have access problems and nobody should
 // feel pushed onto a trail people have died on to unlock the next tier.
 const SP_UNLOCK=2;
+// Which card is expanded. Deliberately not persisted: it is a view state, not
+// something worth syncing to the other phone.
+let spOpenCard=null;
+function spToggle(id){spOpenCard=spOpenCard===id?null:id;spRenderTiers();}
 function spDone(){return DB.get('hikesDone',{});}
 function spTierDone(t){const d=spDone();return (window.CF_HIKES?CF_HIKES.hikes:[]).filter(h=>h.tier===t&&d[h.id]).length;}
 function spMaxTier(){
@@ -951,21 +978,87 @@ function spFacts(h){
   if(h.dist)bits.push(h.dist+'km');
   return bits.join(' · ');
 }
+// 'present' is deliberately not a badge. Nearly every trail on this list has
+// monkeys somewhere, so badging all of them would make the two that actually
+// matter invisible.
+const MONKEY={
+  bad:{lbl:'🐒 Monkeys take food',cls:'m-bad'},
+  watch:{lbl:'🐒 Keep food packed away',cls:'m-watch'},
+};
+// Effort bar, scaled across the whole list so tiers compare honestly. Uses
+// time as the primary axis because that is what decides whether a hike eats
+// the morning or the whole day.
+function spEffort(h){
+  const hrs=(String(h.time).match(/[\d.]+/g)||[]).map(Number);
+  const max=hrs.length?Math.max(...hrs):0;
+  if(!max)return 0;
+  if(/day/.test(h.time))return 100;
+  return Math.max(6,Math.min(100,Math.round(max/12*100)));
+}
+// Static map built from raw OpenStreetMap tiles as plain <img> tags.
+// Deliberately NOT the openstreetmap.org embed iframe: that switched to a
+// WebGL renderer and shows "your browser does not support WebGL" where WebGL
+// is unavailable or blocked. Images always render, on any phone, with no JS.
+// Tiles load only for the card you expand.
+const MAP_W=420,MAP_H=190,MAP_Z=13;
+function spMap(h){
+  if(!h.lat||!h.lon)return '';
+  const n=Math.pow(2,MAP_Z);
+  const xf=(h.lon+180)/360*n;
+  const la=h.lat*Math.PI/180;
+  const yf=(1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n;
+  // world pixel of the top-left corner of our viewport
+  const left=xf*256-MAP_W/2, top=yf*256-MAP_H/2;
+  let imgs='';
+  for(let tx=Math.floor(left/256);tx<=Math.floor((left+MAP_W)/256);tx++){
+    for(let ty=Math.floor(top/256);ty<=Math.floor((top+MAP_H)/256);ty++){
+      if(ty<0||ty>=n)continue;
+      const wx=((tx%n)+n)%n;   // wrap at the date line
+      imgs+=`<img loading="lazy" src="https://tile.openstreetmap.org/${MAP_Z}/${wx}/${ty}.png" style="left:${tx*256-left}px;top:${ty*256-top}px" alt="">`;
+    }
+  }
+  return `<div class="hmap">
+    <div class="hmapin" style="width:${MAP_W}px;height:${MAP_H}px">${imgs}<span class="hpin"></span>
+      <span class="hattr">© OpenStreetMap</span></div>
+    <a class="hmaplink" href="https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}" target="_blank" rel="noopener">Directions to the trailhead →</a>
+  </div>`;
+}
+function spStat(v,lbl){return v?`<div class="hstat"><b>${esc(v)}</b><span>${lbl}</span></div>`:'';}
 function spHikeCard(h,locked){
-  const d=spDone(),done=!!d[h.id];
+  const d=spDone(),done=!!d[h.id],open=spOpenCard===h.id&&!locked;
   const req=[];
   if(h.permit)req.push(h.permit===true?'Permit needed':esc(h.permit));
   if(h.guide)req.push('Guide required');
   if(h.closed)req.push(esc(h.closed));
-  return `<div class="hike ${done?'done':''} ${locked?'locked':''}">
-    <button class="hbox" onclick="${locked?'':`spTick('${h.id}')`}" ${locked?'disabled':''}>${done?'✓':locked?'🔒':''}</button>
-    <div class="hbody">
-      <div class="hname">${esc(h.name)}<span class="hdiff">${esc(h.diff||'')}</span></div>
-      <div class="meta">${esc(h.area)} · ${spFacts(h)}</div>
-      ${req.length?`<div class="hreq">${req.join(' · ')}</div>`:''}
+  const mk=MONKEY[h.monkeys];
+  return `<div class="hike ${done?'done':''} ${locked?'locked':''} ${open?'open':''}">
+    <div class="hrow">
+      <button class="hbox" onclick="${locked?'':`event.stopPropagation();spTick('${h.id}')`}" ${locked?'disabled':''}>${done?'✓':locked?'🔒':''}</button>
+      <div class="hbody" onclick="${locked?'':`spToggle('${h.id}')`}">
+        <div class="hname">${esc(h.name)}<span class="hdiff">${esc(h.diff||'')}</span></div>
+        <div class="meta">${esc(h.area)} · ${spFacts(h)}</div>
+        <div class="hbadges">
+          ${req.map(r=>`<span class="hbadge b-req">${r}</span>`).join('')}
+          ${mk?`<span class="hbadge ${mk.cls}">${mk.lbl}</span>`:''}
+          ${h.warn?`<span class="hbadge b-warn">⚠ Read before going</span>`:''}
+        </div>
+      </div>
+      ${locked?'':`<button class="hchev" onclick="spToggle('${h.id}')">${open?'▲':'▼'}</button>`}
+    </div>
+    ${open?`<div class="hdetail">
+      <div class="hbar"><i style="width:${spEffort(h)}%"></i></div>
+      <div class="hstats">
+        ${spStat(h.drive,'drive')}${spStat(h.time,'on foot')}
+        ${spStat(h.dist?h.dist+' km':'','distance')}
+        ${spStat(h.gain?h.gain+' m':'','ascent')}
+        ${spStat(h.summit?h.summit+' m':'','summit')}
+      </div>
       ${h.warn?`<div class="hwarn"><b>Read first:</b> ${esc(h.warn)}</div>`:''}
-      ${h.note&&!locked?`<div class="hnote">${esc(h.note)}</div>`:''}
-    </div></div>`;
+      ${mk&&h.mnote?`<div class="hmonkey"><b>${mk.lbl}</b><br>${esc(h.mnote)}</div>`:''}
+      ${h.note?`<div class="hnote">${esc(h.note)}</div>`:''}
+      ${spMap(h)}
+    </div>`:''}
+  </div>`;
 }
 function spRenderTiers(){
   const box=document.getElementById('sp-tiers');if(!box)return;
