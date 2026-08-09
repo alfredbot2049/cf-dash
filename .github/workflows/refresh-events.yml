@@ -1,7 +1,7 @@
 name: refresh-events
 on:
   schedule:
-    - cron: '0 1 * * 1,4'   # Mon & Thu 01:00 UTC (~9am KL)
+    - cron: '0 1 * * *'   # Daily 01:00 UTC (~9am KL)
   workflow_dispatch:
 permissions:
   contents: write
@@ -20,8 +20,8 @@ jobs:
       # we would throw away the Ticketmelon events it did fetch.
       # Supabase pauses free-tier projects after 7 days with no activity, and a
       # paused project stops resolving in DNS entirely, which takes sign-in and
-      # sync down with it. That already happened once. This runs Mon and Thu,
-      # so one request per run keeps the project awake for good.
+      # sync down with it. This has happened more than once despite a twice-a-week
+      # request, so ping both Auth and the database every day.
       # No secret needed: the anon key is public by design and row security
       # means this read returns nothing.
       - name: keep supabase awake
@@ -29,9 +29,12 @@ jobs:
         run: |
           ANON=$(node -e "eval(require('fs').readFileSync('supabase-config.js','utf8').replace('window.','global.'));console.log(CF_SB.anon)")
           URL=$(node -e "eval(require('fs').readFileSync('supabase-config.js','utf8').replace('window.','global.'));console.log(CF_SB.url)")
-          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/cf_state?select=id&limit=1" -H "apikey: $ANON" --max-time 30)
-          echo "supabase ping: HTTP $code"
-          [ "$code" = "200" ] || echo "::warning::Supabase ping returned $code, project may be paused"
+          auth_code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/auth/v1/health" --max-time 30 || true)
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/cf_state?select=id&limit=1" -H "apikey: $ANON" --max-time 30 || true)
+          echo "supabase auth ping: HTTP $auth_code"
+          echo "supabase database ping: HTTP $code"
+          [ "$auth_code" = "200" ] || echo "::warning::Supabase auth ping returned $auth_code, project may be paused"
+          [ "$code" = "200" ] || echo "::warning::Supabase database ping returned $code, project may be paused"
 
       - name: fetch events
         id: fetch

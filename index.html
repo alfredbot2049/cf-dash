@@ -304,6 +304,12 @@
   .modal-wrap{position:fixed;inset:0;background:rgba(6,8,14,.6);backdrop-filter:blur(3px);z-index:70;display:none;align-items:center;justify-content:center;padding:20px}
   .modal-wrap.show{display:flex}
   .modal{background:var(--card);border:1px solid var(--cardEdge);border-radius:18px;box-shadow:var(--sh2);padding:20px;width:100%;max-width:380px}
+  .modal-label{display:block;color:var(--ink2);font-size:12.5px;font-weight:600;margin:13px 1px 6px}
+  .modal-status{font-size:12.5px;min-height:18px;margin-top:9px;line-height:1.4}
+  .modal-status.ok{color:var(--green)}
+  .modal-status.err{color:var(--terra)}
+  .auth-or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:13px 0}
+  .auth-or:before,.auth-or:after{content:"";height:1px;background:var(--line2);flex:1}
   .seg{display:flex;background:var(--paper2);border-radius:11px;padding:3px;gap:3px}
   .authseg{flex:1;border:none;background:none;color:var(--muted);font-weight:600;font-size:13px;padding:8px;border-radius:9px}
   .authseg.on{background:var(--card);color:var(--ink);box-shadow:var(--sh1)}
@@ -466,13 +472,29 @@
 
 <div class="modal-wrap" id="authbox">
   <div class="modal">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:20px">Sync C <span style="color:var(--terra)">&amp;</span> F</h3><button class="btn ghost" onclick="closeAuth()">✕</button></div>
-    <p class="muted" style="font-size:13px;margin:6px 0 14px">One shared space for the two of you — movies, bills, map, all live on both phones. Sign in with the login Alfred set up for you.</p>
-    <select id="auth-name" style="display:none"><option value="Fares">Fares</option></select>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:20px">Sign in to C <span style="color:var(--terra)">&amp;</span> F</h3><button class="btn ghost" onclick="closeAuth()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 14px">Use your password, or get a secure sign-in link by email.</p>
     <input id="auth-email" type="email" placeholder="Email" autocomplete="email" style="margin-top:4px">
-    <input id="auth-pass" type="password" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-top:10px">
-    <div id="auth-err" style="color:var(--terra);font-size:12.5px;min-height:16px;margin-top:8px"></div>
+    <input id="auth-pass" type="password" placeholder="Password" autocomplete="current-password" style="margin-top:10px">
+    <div id="auth-err" class="modal-status" role="status" aria-live="polite"></div>
     <button id="auth-go" class="btn primary" style="width:100%;margin-top:4px" onclick="authGo()">Sign in</button>
+    <div class="auth-or">or</div>
+    <button id="auth-magic" class="btn" style="width:100%" onclick="sendMagicLink()">Email me a sign-in link</button>
+    <p class="muted" style="font-size:11.5px;margin:12px 0 0;text-align:center">Only the two existing C &amp; F accounts can sign in.</p>
+  </div>
+</div>
+
+<div class="modal-wrap" id="settingsbox">
+  <div class="modal">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:20px">Account</h3><button class="btn ghost" onclick="closeSettings()">✕</button></div>
+    <p id="acct-email" class="muted" style="font-size:13px;margin:6px 0 16px"></p>
+    <label class="modal-label" for="new-pass">New password</label>
+    <input id="new-pass" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+    <label class="modal-label" for="confirm-pass">Confirm new password</label>
+    <input id="confirm-pass" type="password" placeholder="Type it again" autocomplete="new-password">
+    <div id="settings-err" class="modal-status" role="status" aria-live="polite"></div>
+    <button id="password-go" class="btn primary" style="width:100%;margin-top:4px" onclick="changePassword()">Change password</button>
+    <button class="btn ghost" style="width:100%;margin-top:8px" onclick="signOut()">Sign out</button>
   </div>
 </div>
 
@@ -555,7 +577,7 @@ function applyTheme(t){
 function toggleTheme(){applyTheme(DB.get('theme','dark')==='light'?'dark':'light');}
 
 /* ---------- accounts + live sync (Supabase) ---------- */
-let sb=null,cfUser=null,pushTimer=null,pulling=false,authMode='in';
+let sb=null,cfUser=null,pushTimer=null,pulling=false;
 const LOCAL_ONLY=['cf-theme','cf-me'];            // per-device, never synced
 function syncable(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))o[k]=localStorage.getItem(k);}return o;}
 function sbReady(){return !!(sb&&cfUser);}
@@ -577,27 +599,57 @@ async function startSession(user){
   cfUser={id:user.id,email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'Fares'};
   setGate(false);
   DB.set('me',/^char/i.test(cfUser.name)?'C':'F');renderAcct();
-  await pullMerge();subscribeRealtime();
+  pullMerge();subscribeRealtime();
   clearInterval(pollTimer);pollTimer=setInterval(pollPull,12000);      // safety net if realtime drops
   window.addEventListener('focus',pollPull);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollPull();});
 }
 function renderAcct(){const b=document.getElementById('acctBtn');if(b)b.textContent=cfUser?('● '+cfUser.name):'Sign in';}
-function acctClick(){if(cfUser){if(confirm('Sign out of C&F sync?'))signOut();}else openAuth();}
-async function signOut(){try{await sb.auth.signOut();}catch(e){}cfUser=null;renderAcct();setGate(true);}
+function acctClick(){if(cfUser)openSettings();else openAuth();}
+async function signOut(){try{await sb.auth.signOut();}catch(e){}closeSettings();cfUser=null;renderAcct();setGate(true);}
 function openAuth(){if(!sb){alert('Sync needs internet — open the live link.');return;}document.getElementById('authbox').classList.add('show');authErr('');}
 function closeAuth(){document.getElementById('authbox').classList.remove('show');}
-function authSwitch(m){authMode=m;document.getElementById('auth-name-row').style.display=m==='up'?'':'none';document.querySelectorAll('.authseg').forEach(x=>x.classList.toggle('on',x.dataset.m===m));document.getElementById('auth-go').textContent=m==='up'?'Create account':'Sign in';authErr('');}
-function authErr(t){document.getElementById('auth-err').textContent=t||'';}
+function authErr(t,ok=false){const el=document.getElementById('auth-err');el.textContent=t||'';el.className='modal-status '+(t?(ok?'ok':'err'):'');}
+function authRedirectUrl(){return location.origin+location.pathname;}
 async function authGo(){
   const email=document.getElementById('auth-email').value.trim(),pw=document.getElementById('auth-pass').value;
   if(!email||!pw){authErr('Enter email and password');return;}
   const go=document.getElementById('auth-go');go.disabled=true;const label=go.textContent;go.textContent='…';
   try{
-    if(authMode==='up'){const name=document.getElementById('auth-name').value;const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});if(error)throw error;if(data.session)await startSession(data.user);else{const r=await sb.auth.signInWithPassword({email,password:pw});if(r.error)throw r.error;await startSession(r.data.user);}}
-    else{const {data,error}=await sb.auth.signInWithPassword({email,password:pw});if(error)throw error;await startSession(data.user);}
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});if(error)throw error;await startSession(data.user);
     closeAuth();
   }catch(e){authErr((e&&e.message)||'Failed');}
+  go.disabled=false;go.textContent=label;
+}
+async function sendMagicLink(){
+  const email=document.getElementById('auth-email').value.trim();
+  if(!email){authErr('Enter your email first');return;}
+  const go=document.getElementById('auth-magic');go.disabled=true;const label=go.textContent;go.textContent='Sending…';
+  try{
+    const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:authRedirectUrl()}});
+    if(error)throw error;
+    authErr('Link sent. Open the email on this phone to sign in.',true);
+  }catch(e){authErr((e&&e.message)||'Could not send the link');}
+  go.disabled=false;go.textContent=label;
+}
+function openSettings(){
+  if(!cfUser)return;
+  document.getElementById('acct-email').textContent=cfUser.name+' · '+cfUser.email;
+  document.getElementById('new-pass').value='';document.getElementById('confirm-pass').value='';settingsErr('');
+  document.getElementById('settingsbox').classList.add('show');
+}
+function closeSettings(){document.getElementById('settingsbox').classList.remove('show');}
+function settingsErr(t,ok=false){const el=document.getElementById('settings-err');el.textContent=t||'';el.className='modal-status '+(t?(ok?'ok':'err'):'');}
+async function changePassword(){
+  const pw=document.getElementById('new-pass').value,confirmPw=document.getElementById('confirm-pass').value;
+  if(pw.length<6){settingsErr('Use at least 6 characters');return;}
+  if(pw!==confirmPw){settingsErr('The passwords do not match');return;}
+  const go=document.getElementById('password-go');go.disabled=true;const label=go.textContent;go.textContent='Saving…';
+  try{
+    const {error}=await sb.auth.updateUser({password:pw});if(error)throw error;
+    document.getElementById('new-pass').value='';document.getElementById('confirm-pass').value='';
+    settingsErr('Password changed.',true);
+  }catch(e){settingsErr((e&&e.message)||'Could not change the password');}
   go.disabled=false;go.textContent=label;
 }
 // Login wall. The app stays hidden until Supabase confirms a session, so
@@ -621,9 +673,13 @@ async function sbBoot(){
   // app with no way in.
   if(!window.CF_SB||!window.supabase){setGate(false);return;}
   setGate(true);
-  try{sb=window.supabase.createClient(CF_SB.url,CF_SB.anon,{auth:{persistSession:true,autoRefreshToken:true}});
-    const {data}=await sb.auth.getSession();
+  try{sb=window.supabase.createClient(CF_SB.url,CF_SB.anon,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    const {data,error}=await sb.auth.getSession();if(error)throw error;
     if(data&&data.session){await startSession(data.session.user);}
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(event==='SIGNED_IN'&&session&&(!cfUser||cfUser.id!==session.user.id))setTimeout(()=>startSession(session.user),0);
+      if(event==='SIGNED_OUT'&&cfUser){closeSettings();cfUser=null;renderAcct();setGate(true);}
+    });
   }catch(e){/* stay gated: a failed check must not open the door */}
 }
 
@@ -1217,16 +1273,23 @@ function spRender(){
 }
 
 /* ---------- boot ---------- */
-applyTheme(DB.get('theme','dark'));
-sbBoot();
-document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
-mvInput().addEventListener('input',mvAc);
-mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
-document.getElementById('cl-input').addEventListener('keydown',e=>{if(e.key==='Enter')clAdd();});
-tvInput().addEventListener('input',tvAc);
-tvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('town-ac').classList.remove('show');townSearch();}});
-document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap')){document.getElementById('mv-ac').classList.remove('show');document.getElementById('town-ac').classList.remove('show');}});
-go(location.hash.replace('#','')||'home');
+async function boot(){
+  applyTheme(DB.get('theme','dark'));
+  // Finish parsing a magic-link callback before go() normalises the URL hash.
+  // Supabase implicit links carry the session in that hash.
+  await sbBoot();
+  document.getElementById('navdate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+  mvInput().addEventListener('input',mvAc);
+  mvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('mv-ac').classList.remove('show');mvAdd();}});
+  document.getElementById('cl-input').addEventListener('keydown',e=>{if(e.key==='Enter')clAdd();});
+  document.getElementById('auth-pass').addEventListener('keydown',e=>{if(e.key==='Enter')authGo();});
+  document.getElementById('confirm-pass').addEventListener('keydown',e=>{if(e.key==='Enter')changePassword();});
+  tvInput().addEventListener('input',tvAc);
+  tvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('town-ac').classList.remove('show');townSearch();}});
+  document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap')){document.getElementById('mv-ac').classList.remove('show');document.getElementById('town-ac').classList.remove('show');}});
+  go(location.hash.replace('#','')||'home');
+}
+boot();
 </script>
 </body>
 </html>
