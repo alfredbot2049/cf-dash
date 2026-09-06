@@ -313,7 +313,46 @@
   .seg{display:flex;background:var(--paper2);border-radius:11px;padding:3px;gap:3px}
   .authseg{flex:1;border:none;background:none;color:var(--muted);font-weight:600;font-size:13px;padding:8px;border-radius:9px}
   .authseg.on{background:var(--card);color:var(--ink);box-shadow:var(--sh1)}
-</style>
+
+  /* ---------- apartment hunt ---------- */
+  .hm{background:var(--card);border:1px solid var(--cardEdge);border-radius:var(--r);overflow:hidden;margin-bottom:14px;box-shadow:var(--sh1)}
+  .hm.over{opacity:.5}
+  .hm.out{display:none}
+  .hm-pix{position:relative;background:#0c0e14;aspect-ratio:16/10;overflow:hidden}
+  .hm-pix.none{aspect-ratio:auto;height:34px}
+  .hm-pix img{width:100%;height:100%;object-fit:cover;display:block}
+  .hm-pix .nopix{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:11.5px;gap:7px}
+  .hm-nav{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center}
+  .hm-nav button{background:rgba(0,0,0,.42);border:0;color:#fff;font-size:19px;line-height:1;width:38px;height:100%;cursor:pointer;opacity:0;transition:opacity .15s}
+  .hm-pix:hover .hm-nav button{opacity:1}
+  .hm-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;gap:4px;justify-content:center;pointer-events:none}
+  .hm-dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.45)}
+  .hm-dots i.on{background:#fff}
+  .hm-badge{position:absolute;top:9px;left:9px;display:flex;gap:5px;flex-wrap:wrap}
+  .hm-badge span{background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;backdrop-filter:blur(4px)}
+  .hm-badge span.new{background:rgba(46,160,96,.9)}
+  .hm-badge span.old{background:rgba(190,90,60,.9)}
+  .hm-body{padding:13px 15px 15px}
+  .hm-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .hm-rent{font-size:19px;font-weight:800;letter-spacing:-.01em}
+  .hm-area{font-size:13px;color:var(--muted);font-weight:600}
+  .hm-t{font-size:13.5px;margin:5px 0 8px;line-height:1.42}
+  .hm-spec{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:10px}
+  .hm-spec b{color:var(--fg);font-weight:700}
+  .hm-votes{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .hm-who{font-size:11.5px;color:var(--muted);font-weight:700;margin-right:1px}
+  .hm-votes button{border:1px solid var(--line2);background:transparent;border-radius:18px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .13s}
+  .hm-votes button.on.y{background:rgba(46,160,96,.16);border-color:rgba(46,160,96,.6);color:#5fd08a}
+  .hm-votes button.on.m{background:rgba(212,160,60,.16);border-color:rgba(212,160,60,.6);color:#e0b45e}
+  .hm-votes button.on.n{background:rgba(190,80,60,.16);border-color:rgba(190,80,60,.6);color:#e08a72}
+  .hm-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+  .hm-foot a{font-size:12.5px;font-weight:700;color:var(--blue);text-decoration:none}
+  .hm-more{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:9px;display:none}
+  .hm-more.open{display:block}
+  .hm-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px}
+  .hm-f label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
+  .hm-f input,.hm-f select{width:100%}
+  </style>
 </head>
 <body>
 
@@ -374,6 +413,38 @@
         <button class="btn primary" onclick="wkAdd()">Add</button>
       </div>
     </div>
+  </div></section>
+
+  <!-- HOMES -->
+  <section class="view" id="v-homes"><div class="pad">
+    <div class="vhead"><h2>Apartment Hunt</h2><div class="sub">Live KL rentals, pulled nightly. Say yes, maybe or no — you both see both.</div></div>
+    <div class="subtabs" id="hm-subtabs"></div>
+    <div class="card" id="hm-filters"></div>
+    <div class="muted" style="font-size:12.5px;margin:12px 2px 4px" id="hm-count"></div>
+    <div id="hm-list"></div>
+    <div class="sectitle">Add one yourself</div>
+    <div class="card">
+      <div class="muted" style="font-size:12.5px;margin-bottom:11px">PropertyGuru and iProperty block automated reading, so anything you find there goes in here and sits in the same list.</div>
+      <div class="row">
+        <input id="hm-a-name" placeholder="Building / what it is" style="flex:3 1 200px">
+        <input id="hm-a-rent" type="number" placeholder="Rent RM" style="flex:1 1 110px">
+      </div>
+      <div class="row" style="margin-top:9px">
+        <input id="hm-a-area" placeholder="Area (e.g. Bangsar)" style="flex:2 1 150px">
+        <input id="hm-a-beds" type="number" placeholder="Beds" style="flex:1 1 78px">
+        <input id="hm-a-baths" type="number" placeholder="Baths" style="flex:1 1 78px">
+        <input id="hm-a-size" type="number" placeholder="Sqft" style="flex:1 1 90px">
+      </div>
+      <div class="row" style="margin-top:9px">
+        <input id="hm-a-url" placeholder="Link to the listing" style="flex:3 1 220px">
+        <input id="hm-a-year" type="number" placeholder="Built" style="flex:1 1 90px">
+      </div>
+      <div class="row" style="margin-top:9px">
+        <input id="hm-a-img" placeholder="Photo links, comma separated (optional)" style="flex:3 1 220px">
+        <button class="btn primary" onclick="hmAdd()">Add</button>
+      </div>
+    </div>
+    <div class="note" id="hm-note-box"></div>
   </div></section>
 
   <!-- TRIPS -->
@@ -510,6 +581,7 @@
 <script src="malaysia.geojson.js"></script>
 <script src="posters.js"></script>
 <script src="events.js"></script>
+<script src="listings.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
 <script src="supabase-config.js"></script>
@@ -552,7 +624,7 @@ const LIB=[
 ];
 
 /* ---------- router / nav ---------- */
-const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
+const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'homes',ico:'🏠',lbl:'Homes'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
 const VIEWS=['home',...NAV.map(n=>n.id)];
 function renderTabs(cur){
   document.getElementById('tabs').innerHTML=NAV.map(n=>`<button class="tab ${cur===n.id?'on':''}" onclick="go('${n.id}')"><span class="d">${n.ico}</span>${n.lbl}</button>`).join('');
@@ -563,7 +635,7 @@ function go(v){
   renderTabs(v);
   history.replaceState(null,'','#'+v);
   window.scrollTo({top:0,behavior:'instant'in window?'instant':'auto'});
-  ({movies:mvRender,week:wkRender,trips:trRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||(()=>{}))();
+  ({movies:mvRender,week:wkRender,trips:trRender,homes:hmRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||(()=>{}))();
 }
 window.addEventListener('hashchange',()=>go(location.hash.replace('#','')||'home'));
 
@@ -585,7 +657,7 @@ function onLocalChange(key){if(sbReady()&&!pulling&&!LOCAL_ONLY.includes(key))sc
 function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNow,700);}
 async function pushNow(){if(!sbReady())return;try{await sb.from('cf_state').update({data:syncable(),updated_by:cfUser.name,updated_at:new Date().toISOString()}).eq('id','shared');}catch(e){}}
 function applyRemote(data){if(!data)return;pulling=true;try{Object.entries(data).forEach(([k,v])=>{if(k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));});}finally{pulling=false;}rerender();}
-function rerender(){const v=location.hash.replace('#','')||'home';({movies:mvRender,week:wkRender,trips:trRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||renderTiles)();}
+function rerender(){const v=location.hash.replace('#','')||'home';({movies:mvRender,week:wkRender,trips:trRender,homes:hmRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||renderTiles)();}
 async function pullMerge(){try{
   const {data}=await sb.from('cf_state').select('data').eq('id','shared').single();
   const remote=(data&&data.data)||{},local=syncable();
@@ -683,11 +755,182 @@ async function sbBoot(){
   }catch(e){/* stay gated: a failed check must not open the door */}
 }
 
+
+/* ---------- apartment hunt ---------- */
+// The brief Fares gave, as the STARTING filter state only. Everything here is
+// editable in the UI and remembered, because the brief will move as they look.
+// The fetcher deliberately casts a wider net than this, so loosening a filter
+// never needs a re-fetch.
+const HM_DEFAULTS={rentMin:3000,rentMax:4300,beds:2,baths:2,size:1000,maxAge:3,area:''};
+// The areas that actually matter, in his words: Bangsar, Mont Kiara, Bangsar
+// South, weighted toward cutting Charlotte's commute to Shah Alam.
+const HM_TARGET=/bangsar|mont kiara|kerinchi|pantai|damansara|hartamas|kl sentral|brickfields/i;
+let hmTab='target', hmPix={}, hmOpen={};
+
+const hmF=()=>Object.assign({},HM_DEFAULTS,DB.get('homeFilters',{}));
+// Manual adds sit in the same pool as the fetched feed and are shaped
+// identically, so filters, votes and buckets treat them the same. This is how
+// a PropertyGuru place Fares found by hand ends up next to a Mudah one instead
+// of in a separate list, which was the whole complaint about the spreadsheets.
+const hmMine=()=>DB.get('homesManual',[]);
+const hmAll=()=>((window.CF_LISTINGS&&CF_LISTINGS.listings)||[]).concat(hmMine());
+function hmAdd(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('hm-a-name'), rent=+g('hm-a-rent');
+  if(!name||!rent){alert('Needs at least a name and a rent.');return;}
+  const yr=parseInt(g('hm-a-year'),10);
+  const l={
+    src:'mine', ref:uid(), title:name, building:name,
+    url:g('hm-a-url'), rent,
+    beds:+g('hm-a-beds')||null, baths:+g('hm-a-baths')||null, size:+g('hm-a-size')||null,
+    area:g('hm-a-area')||'Added by hand',
+    builtYear:(yr>=1950&&yr<=new Date().getFullYear()+6)?yr:null,
+    // Only https urls, same rule the fetcher applies. These get rendered into
+    // the page, so a javascript: or data: url must not survive a paste.
+    imgs:g('hm-a-img').split(',').map(x=>x.trim()).filter(x=>/^https:\/\/\S+$/i.test(x)).slice(0,20),
+    desc:'', transit:'', agent:'', listedAt:new Date().toISOString().slice(0,10),
+  };
+  DB.set('homesManual',hmMine().concat([l]));
+  ['hm-a-name','hm-a-rent','hm-a-area','hm-a-beds','hm-a-baths','hm-a-size','hm-a-url','hm-a-year','hm-a-img']
+    .forEach(id=>document.getElementById(id).value='');
+  hmRender();
+}
+function hmDel(id){
+  if(!confirm('Remove this place?'))return;
+  DB.set('homesManual',hmMine().filter(l=>hmId(l)!==id));
+  hmRender();
+}
+const hmId=l=>l.src+':'+l.ref;
+const hmVotes=()=>DB.get('homeVotes',{});
+const hmAge=l=>l.builtYear?(new Date().getFullYear()-l.builtYear):null;
+
+function hmVote(id,who,v){
+  const all=hmVotes(); const cur=all[id]||{};
+  cur[who]=(cur[who]===v?'':v);            // tapping the same answer clears it
+  all[id]=cur; DB.set('homeVotes',all); hmRender();
+}
+function hmSetF(k,v){const f=hmF();f[k]=v;DB.set('homeFilters',f);hmRender();}
+function hmReset(){DB.set('homeFilters',{});hmRender();}
+function hmSlide(id,d){
+  const l=hmAll().find(x=>hmId(x)===id); if(!l||!l.imgs.length)return;
+  hmPix[id]=((hmPix[id]||0)+d+l.imgs.length)%l.imgs.length; hmRender();
+}
+function hmMore(id){hmOpen[id]=!hmOpen[id];hmRender();}
+
+// One place decides whether a listing is in play, so the counts on the tabs
+// and the list itself can never disagree.
+function hmPass(l,f){
+  // A place one of them added by hand is never filtered out. They chose to put
+  // it there, so a filter silently eating it is a bug, not a feature — and it
+  // would happen constantly, because Fares' own current building is older than
+  // the max-age rule he set.
+  if(l.src==='mine')return true;
+  return (!f.beds||(l.beds||0)>=f.beds)
+      && (!f.baths||(l.baths||0)>=f.baths)
+      && (!f.size||(l.size||0)>=f.size)
+      && (!f.area||(l.area||'').toLowerCase().includes(f.area.toLowerCase()))
+      && l.rent>=f.rentMin;
+}
+// Age is kept separate from hmPass on purpose. A listing whose build year we
+// do not know must not be silently dropped by an age filter — we cannot prove
+// it fails, so it stays visible and says "year unknown".
+function hmAgeOk(l,f){if(l.src==='mine')return true;const a=hmAge(l);return !f.maxAge||a===null||a<=f.maxAge;}
+
+function hmBucket(l,f){
+  const v=hmVotes()[hmId(l)]||{};
+  if(v.f==='n'&&v.c==='n')return 'no';
+  if(v.f==='y'&&v.c==='y')return 'both';
+  if(v.f==='y'||v.c==='y'||v.f==='m'||v.c==='m')return 'short';
+  // Hand-added places always sit in the main view, whatever the area reads as.
+  if(l.src==='mine')return 'target';
+  return HM_TARGET.test(l.area||'')?'target':'all';
+}
+function hmPool(tab){
+  const f=hmF();
+  return hmAll().filter(l=>{
+    if(!hmPass(l,f)||!hmAgeOk(l,f))return false;
+    const b=hmBucket(l,f);
+    if(tab==='both')return b==='both';
+    if(tab==='short')return b==='short'||b==='both';
+    if(tab==='no')return b==='no';
+    if(tab==='target')return (l.src==='mine'||HM_TARGET.test(l.area||''))&&b!=='no';
+    return b!=='no';
+  });
+}
+
+function hmCard(l,f){
+  const id=hmId(l), v=hmVotes()[id]||{}, i=hmPix[id]||0, age=hmAge(l);
+  const over=l.rent>f.rentMax;
+  const pix=l.imgs.length
+    ? `<img src="${esc(l.imgs[i])}" alt="" loading="lazy">
+       ${l.imgs.length>1?`<div class="hm-nav"><button onclick="hmSlide('${id}',-1)">‹</button><button onclick="hmSlide('${id}',1)">›</button></div>
+       <div class="hm-dots">${l.imgs.slice(0,12).map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('')}</div>`:''}`
+    : `<div class="nopix">📷 photos not pulled yet</div>`;
+  const yr = age===null ? `<span>year unknown</span>`
+           : age<=3 ? `<span class="new">${l.builtYear} · ${age||'new'}y old</span>`
+           : `<span class="old">${l.builtYear} · ${age}y old</span>`;
+  const btn=(who,val,lbl)=>`<button class="${val} ${v[who]===val?'on':''}" onclick="hmVote('${id}','${who}','${val}')">${lbl}</button>`;
+  return `<div class="hm ${over?'over':''}">
+    <div class="hm-pix ${l.imgs.length?'':'none'}">${pix}<div class="hm-badge">${yr}${over?'<span class="old">over budget</span>':''}</div></div>
+    <div class="hm-body">
+      <div class="hm-top"><div class="hm-rent">RM ${l.rent.toLocaleString()}<span style="font-size:12px;font-weight:600;color:var(--muted)">/mo</span></div>
+        <div class="hm-area">${esc(l.area)}</div></div>
+      <div class="hm-t">${esc(l.building||l.title)}</div>
+      <div class="hm-spec">
+        <span><b>${l.beds||'?'}</b> bed</span><span><b>${l.baths||'?'}</b> bath</span>
+        <span><b>${l.size?l.size.toLocaleString():'?'}</b> sqft</span>
+        ${l.size&&l.rent?`<span><b>RM ${(l.rent/l.size).toFixed(2)}</b>/sqft</span>`:''}
+      </div>
+      ${l.transit?`<div class="hm-spec"><span>🚇 ${esc(l.transit)}</span></div>`:''}
+      <div class="hm-votes"><span class="hm-who">Fares</span>${btn('f','y','Yes')}${btn('f','m','Maybe')}${btn('f','n','No')}</div>
+      <div class="hm-votes" style="margin-top:6px"><span class="hm-who">Charlotte</span>${btn('c','y','Yes')}${btn('c','m','Maybe')}${btn('c','n','No')}</div>
+      ${l.desc?`<div class="hm-more ${hmOpen[id]?'open':''}">${esc(l.desc)}</div>`:''}
+      <div class="hm-foot">
+        ${l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open listing ↗</a>`:'<span class="hm-area">Added by hand</span>'}
+        <span>${l.desc?`<button class="btn sm" onclick="hmMore('${id}')">${hmOpen[id]?'Less':'Details'}</button>`:''}${l.src==='mine'?`<button class="btn sm" onclick="hmDel('${id}')">Remove</button>`:''}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function hmRender(){
+  const f=hmF();
+  const tabs=[['target','Your areas'],['all','Everything'],['short','Shortlist'],['both','Both yes'],['no','Passed']];
+  document.getElementById('hm-subtabs').innerHTML=tabs.map(([k,l])=>
+    `<button class="subtab ${hmTab===k?'on':''}" onclick="hmTab='${k}';hmRender()">${l}<span class="n">${hmPool(k).length}</span></button>`).join('');
+
+  document.getElementById('hm-filters').innerHTML=`<div class="hm-f">
+    <div><label>Rent from</label><input type="number" step="100" value="${f.rentMin}" onchange="hmSetF('rentMin',+this.value||0)"></div>
+    <div><label>Ceiling</label><input type="number" step="100" value="${f.rentMax}" onchange="hmSetF('rentMax',+this.value||0)"></div>
+    <div><label>Beds min</label><input type="number" value="${f.beds}" onchange="hmSetF('beds',+this.value||0)"></div>
+    <div><label>Baths min</label><input type="number" value="${f.baths}" onchange="hmSetF('baths',+this.value||0)"></div>
+    <div><label>Sqft min</label><input type="number" step="50" value="${f.size}" onchange="hmSetF('size',+this.value||0)"></div>
+    <div><label>Max age (yrs)</label><input type="number" value="${f.maxAge}" onchange="hmSetF('maxAge',+this.value||0)"></div>
+    <div style="grid-column:span 2"><label>Area contains</label><input placeholder="e.g. Bangsar" value="${esc(f.area)}" onchange="hmSetF('area',this.value.trim())"></div>
+  </div>
+  <div style="margin-top:11px"><button class="btn sm" onclick="hmReset()">Back to the brief</button></div>`;
+
+  const list=hmPool(hmTab).sort((a,b)=>a.rent-b.rent);
+  const over=list.filter(l=>l.rent>f.rentMax).length;
+  document.getElementById('hm-count').textContent=
+    list.length?`${list.length} places${over?` · ${over} over your ${f.rentMax.toLocaleString()} ceiling, greyed out not hidden`:''}`:'';
+  document.getElementById('hm-list').innerHTML=list.length
+    ? list.map(l=>hmCard(l,f)).join('')
+    : `<div class="empty"><span class="big">🏠</span>Nothing matches these filters. Loosen one above.</div>`;
+
+  const d=window.CF_LISTINGS;
+  const withPix=hmAll().filter(l=>(l.imgs||[]).length).length;
+  document.getElementById('hm-note-box').innerHTML=d
+    ? `Pulled from ${(d.sources||[]).map(s=>esc(s.name)).join(' + ')} · ${hmAll().length} KL rentals on file · ${withPix} with photos so far${d.fetchedAt?' · updated '+new Date(d.fetchedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}. Photos and build years fill in over successive nightly runs, because the listing sites throttle how fast they can be read.`
+    : 'Listings feed has not loaded yet.';
+}
+
 /* ---------- home ---------- */
 const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
  {id:'week',ico:'📅',name:"What's On",desc:'Live KL events',color:'var(--gold)',cnt:()=>{const today=new Date().toISOString().slice(0,10);const r=((window.CF_EVENTS&&CF_EVENTS.events)||[]).filter(e=>e.date>=today).length;const m=DB.get('events',[]).filter(e=>e.date>=today).length;const t=r+m;return t?t+' coming up':'loading…'}},
  {id:'trips',ico:'🗺️',name:'Asia Map',desc:'Explore all of Asia',color:'var(--blue)',cnt:()=>{const n=new Set(DB.get('places_asia',[]).map(p=>p.cc).filter(Boolean)).size;return n?n+' countries':'start exploring'}},
+ {id:'homes',ico:'🏠',name:'Apartment Hunt',desc:'Live KL rentals',color:'var(--blue)',cnt:()=>{try{const n=hmPool('target').length;return n?n+' to review':'loading…'}catch(e){return 'loading…'}}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},

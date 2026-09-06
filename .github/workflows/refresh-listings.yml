@@ -1,0 +1,48 @@
+name: refresh-listings
+on:
+  schedule:
+    - cron: '30 2 * * *'   # Daily 02:30 UTC (~10:30am KL), after the events job
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The funnel is plain JSON and needs nothing. The photo and build-year
+      # passes need a real browser, because the listing pages sit behind
+      # Cloudflare and refuse a plain fetch.
+      - name: install browser
+        run: |
+          npm i --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      # continue-on-error because fetch_listings.js exits non-zero when a
+      # source fails, and it must still get to the commit step: a throttled run
+      # legitimately returns the right listings with no new photos, and that
+      # partial progress is worth keeping.
+      - name: fetch listings
+        id: fetch
+        continue-on-error: true
+        run: node fetch_listings.js
+
+      - name: commit if changed
+        run: |
+          git config user.name "cf-listings-bot"
+          git config user.email "cf-listings-bot@users.noreply.github.com"
+          git add listings.js listings/details.json listings/buildings.json
+          git diff --staged --quiet || (git commit -m "chore: auto-refresh KL rentals" && git push)
+
+      # Go red on a source failure so it is visible, same as the events job.
+      # The feed is preserved either way.
+      - name: flag source failures
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "A source failed. The feed was preserved, but check the fetch step log."
+          exit 1

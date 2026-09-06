@@ -1,0 +1,4 @@
+node_modules/
+# Per-machine Cloudflare clearance cookie for the listings fetcher. Not project
+# data, and not something to publish in a public repo.
+listings/.browser-state.json
