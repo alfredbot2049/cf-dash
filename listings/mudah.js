@@ -89,7 +89,32 @@ const NET = {
 const DETAIL_CONCURRENCY = 2;
 const DETAIL_GAP = 900;       // ms between page loads, per worker
 const DETAIL_CAP = 220;       // new pages per run, so a cold start spreads over a few nights
-const GIVE_UP_AFTER = 25;     // consecutive refusals before we stop bothering them
+const GIVE_UP_AFTER = 25;     // consecutive refusals before a cooldown
+const COOLDOWN_MS = 45000;    // wait this long, then give them one more chance
+const COOLDOWNS = 2;          // how many times to do that before calling it a night
+
+// The brief Fares actually cares about. Only used to decide WHICH listings get
+// their photos fetched first — never to drop anything from the feed. The app
+// still receives everything inside the wider net and filters it there.
+const PRIORITY = {
+  areas: /bangsar|mont kiara|kerinchi|pantai|damansara|hartamas|kl sentral|brickfields/i,
+  rentMin: 3000,
+  rentMax: 4300,
+  size: 1000,
+  beds: 2,
+};
+
+// Cloudflare lets a burst through and then challenges, so we can only enrich a
+// slice per run. Spend that slice on the listings the app puts in front of them
+// first, otherwise the photos land on places they will never scroll to.
+function priority(a) {
+  let score = 0;
+  if (PRIORITY.areas.test(a.subarea_name || '')) score -= 100;
+  if (a.monthly_rent >= PRIORITY.rentMin && a.monthly_rent <= PRIORITY.rentMax) score -= 50;
+  if (num(a.size) >= PRIORITY.size) score -= 20;
+  if (num(a.rooms_name) >= PRIORITY.beds) score -= 10;
+  return score;
+}
 
 async function api(from) {
   const url = `https://search.mudah.my/v1/search?category=${CAT_CONDO}&type=let`
@@ -142,12 +167,27 @@ async function detailPass(rows, log) {
     return found;
   }
 
-  const targets = rows.filter(a => !cache[a.list_id]).slice(0, DETAIL_CAP);
+  const targets = rows
+    .filter(a => !cache[a.list_id])
+    .sort((x, y) => priority(x) - priority(y) || (y.list_ts || 0) - (x.list_ts || 0))
+    .slice(0, DETAIL_CAP);
   if (!targets.length) {
     log(`detail pass: ${cached} from cache, nothing new to fetch`);
     return found;
   }
-  let blocked = 0, streak = 0, stopped = false;
+  let blocked = 0, streak = 0, stopped = false, cooldowns = 0;
+
+  // A refusal streak usually means Cloudflare wants us to sit down for a
+  // minute, not that the door is shut for good. Wait it out a couple of times
+  // before giving up, since every extra page is one fewer night to wait.
+  const trip = async () => {
+    if (++streak < GIVE_UP_AFTER) return;
+    if (cooldowns >= COOLDOWNS) { stopped = true; return; }
+    cooldowns++;
+    log(`refused ${streak} in a row, cooling off ${COOLDOWN_MS / 1000}s (${cooldowns}/${COOLDOWNS})`);
+    await sleep(COOLDOWN_MS);
+    streak = 0;
+  };
 
   const session = await context(chromium);
   const ctx = session.ctx;
@@ -163,11 +203,11 @@ async function detailPass(rows, log) {
           const e = document.getElementById('__NEXT_DATA__');
           return e ? e.textContent : null;
         });
-        if (!nd) { blocked++; streak++; if (streak >= GIVE_UP_AFTER) stopped = true; continue; }
+        if (!nd) { blocked++; await trip(); continue; }
         const d = JSON.parse(nd);
         const byId = ((d.props || {}).initialState || {}).adDetails;
         const at = byId && byId.byID && byId.byID[a.list_id] && byId.byID[a.list_id].attributes;
-        if (!at) { blocked++; streak++; if (streak >= GIVE_UP_AFTER) stopped = true; continue; }
+        if (!at) { blocked++; await trip(); continue; }
         streak = 0;
         let transit = '';
         for (const blk of at.descriptionParams || [])
@@ -182,8 +222,7 @@ async function detailPass(rows, log) {
         found.set(a.list_id, rec);
         cache[a.list_id] = rec;
       } catch (e) {
-        blocked++; streak++;
-        if (streak >= GIVE_UP_AFTER) stopped = true;
+        blocked++; await trip();
       }
       await sleep(DETAIL_GAP + Math.random() * 400);
     }
@@ -194,7 +233,7 @@ async function detailPass(rows, log) {
   await closeContext(session);
   saveJson(DETAILS, prune(cache, rows));
   log(`detail pass: ${cached} cached + ${found.size - cached} new, ${blocked} refused`
-      + (stopped ? ` (backed off after ${GIVE_UP_AFTER} in a row — they are rate-limiting, next run picks up where this stopped)` : ''));
+      + (stopped ? ` (they are rate-limiting; next run picks up where this stopped)` : ''));
   return found;
 }
 
