@@ -422,6 +422,19 @@
     <div class="card" id="hm-filters"></div>
     <div class="muted" style="font-size:12.5px;margin:12px 2px 4px" id="hm-count"></div>
     <div id="hm-list"></div>
+    <div class="sectitle">Grab from any site</div>
+    <div class="card">
+      <div class="muted" style="font-size:12.5px;margin-bottom:11px">PropertyGuru and iProperty refuse automated readers, so this runs in <b>your</b> browser instead. Open a listing there as normal, tap this, and it lands below with its photos.</div>
+      <div class="row" style="align-items:center">
+        <a id="hm-grab" class="btn primary" href="#" style="text-decoration:none">Send to C &amp; F</a>
+        <button class="btn sm" onclick="hmCopyGrab()">Copy for iPhone</button>
+      </div>
+      <div class="muted" id="hm-grab-help" style="font-size:12px;margin-top:10px;line-height:1.55">
+        <b>Mac:</b> drag the button to your bookmarks bar.<br>
+        <b>iPhone:</b> Copy, bookmark any page, then edit that bookmark and paste this over its address.
+      </div>
+    </div>
+
     <div class="sectitle">Add one yourself</div>
     <div class="card">
       <div class="muted" style="font-size:12.5px;margin-bottom:11px">PropertyGuru and iProperty block automated reading, so anything you find there goes in here and sits in the same list.</div>
@@ -582,6 +595,7 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="listings.js"></script>
+<script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
 <script src="supabase-config.js"></script>
@@ -795,6 +809,43 @@ function hmAdd(){
     .forEach(id=>document.getElementById(id).value='');
   hmRender();
 }
+// A listing handed over by the bookmarklet running in Fares' or Charlotte's
+// own browser. The payload comes from a third-party page, so nothing in it is
+// trusted: every field is re-validated here exactly like a typed-in one.
+function hmImport(){
+  const m=location.search.match(/[?&]add=([^&]+)/);
+  if(!m)return false;
+  let raw=null;
+  try{raw=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));}catch(e){}
+  // Deliberately NOT clearing the url yet. If anything below throws, the
+  // payload is still in the address bar and a reload retries it, instead of
+  // the listing vanishing with no trace of why.
+  if(!raw||!raw.title||!(+raw.rent))return false;
+  const str=(v,n)=>String(v==null?'':v).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,n);
+  const yr=parseInt(raw.builtYear,10);
+  const l={
+    src:'mine', ref:uid(),
+    title:str(raw.title,120), building:str(raw.building||raw.title,60),
+    url:/^https:\/\/\S+$/i.test(raw.url||'')?raw.url:'',
+    rent:+raw.rent,
+    beds:+raw.beds||null, baths:+raw.baths||null, size:+raw.size||null,
+    area:str(raw.area,40)||'Added by hand',
+    builtYear:(yr>=1950&&yr<=new Date().getFullYear()+6)?yr:null,
+    imgs:(Array.isArray(raw.imgs)?raw.imgs:[]).filter(u=>/^https:\/\/\S+$/i.test(u)).slice(0,20),
+    desc:str(raw.desc,900), transit:'', agent:str(raw.agent,60),
+    listedAt:new Date().toISOString().slice(0,10),
+  };
+  DB.set('homesManual',hmMine().concat([l]));
+  history.replaceState(null,'',location.pathname+location.hash);
+  return l;
+}
+function hmCopyGrab(){
+  const v=window.CF_GRAB||'';
+  if(!v){alert('Bookmarklet did not load.');return;}
+  const done=()=>{const h=document.getElementById('hm-grab-help');if(h)h.innerHTML='<b>Copied.</b> Bookmark any page, edit the bookmark, paste this over its address, then use it on a listing.';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(done,()=>prompt('Copy this:',v));}
+  else prompt('Copy this:',v);
+}
 function hmDel(id){
   if(!confirm('Remove this place?'))return;
   DB.set('homesManual',hmMine().filter(l=>hmId(l)!==id));
@@ -917,6 +968,9 @@ function hmRender(){
   document.getElementById('hm-list').innerHTML=list.length
     ? list.map(l=>hmCard(l,f)).join('')
     : `<div class="empty"><span class="big">🏠</span>Nothing matches these filters. Loosen one above.</div>`;
+
+  const grab=document.getElementById('hm-grab');
+  if(grab&&window.CF_GRAB)grab.setAttribute('href',window.CF_GRAB);
 
   const d=window.CF_LISTINGS;
   const withPix=hmAll().filter(l=>(l.imgs||[]).length).length;
@@ -1530,6 +1584,11 @@ async function boot(){
   tvInput().addEventListener('input',tvAc);
   tvInput().addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('town-ac').classList.remove('show');townSearch();}});
   document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap')){document.getElementById('mv-ac').classList.remove('show');document.getElementById('town-ac').classList.remove('show');}});
+  // The bookmarklet lands here with a listing on the url. Take it before the
+  // first render so they arrive looking at the place they just sent over.
+  let sent=false;
+  try{sent=!!hmImport();}catch(e){}
+  if(sent)location.hash='homes';
   go(location.hash.replace('#','')||'home');
 }
 boot();
