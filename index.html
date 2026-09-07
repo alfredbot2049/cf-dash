@@ -353,7 +353,7 @@
   .hm-f label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
   .hm-f input,.hm-f select{width:100%}
   </style>
-<link rel="stylesheet" href="condo.css?v=20260907-criteria">
+<link rel="stylesheet" href="condo.css?v=20260907-review">
 </head>
 <body>
 
@@ -419,7 +419,7 @@
   <!-- HOMES -->
   <section class="view" id="v-homes"><div class="pad">
     <div class="vhead"><h2>Condo Hunting</h2><div class="sub">Find our next home. The listings, the details, and what we both think.</div></div>
-    <div class="ch-mode"><button data-condo-mode="comparison" onclick="CondoHunting.mode('comparison')">Our comparison</button><button data-condo-mode="map" onclick="CondoHunting.mode('map')">Property map</button><button data-condo-mode="explore" onclick="CondoHunting.mode('explore')">Explore rentals</button></div><div id="condo-root"></div><div id="hm-legacy" hidden>
+    <div class="ch-mode"><button data-condo-mode="comparison" onclick="CondoHunting.mode('comparison')">Review dashboard</button><button data-condo-mode="map" onclick="CondoHunting.mode('map')">Property map</button><button data-condo-mode="explore" onclick="CondoHunting.mode('explore')">Explore rentals</button></div><div id="condo-root"></div><div id="hm-legacy" hidden>
     <div class="subtabs" id="hm-subtabs"></div>
     <div class="card" id="hm-filters"></div>
     <div class="muted" style="font-size:12.5px;margin:12px 2px 4px" id="hm-count"></div>
@@ -597,8 +597,8 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="listings.js"></script>
-<script src="condo-map.js?v=20260907-criteria"></script>
-<script src="condo.js?v=20260907-criteria"></script>
+<script src="condo-map.js?v=20260907-review"></script>
+<script src="condo.js?v=20260907-review"></script>
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
@@ -875,6 +875,7 @@ function hmMore(id){hmOpen[id]=!hmOpen[id];hmRender();}
 // One place decides whether a listing is in play, so the counts on the tabs
 // and the list itself can never disagree.
 function hmPass(l,f){
+  if(CondoHunting.blockedDiscovery(l)||l.rent>f.rentMax)return false;
   if(!CondoHunting.eligible(l.builtYear,[l.furnishing,l.title,l.desc].filter(Boolean).join(' ')))return false;
   return (!f.beds||(l.beds||0)>=f.beds)
       && (!f.baths||(l.baths||0)>=f.baths)
@@ -887,7 +888,7 @@ function hmAgeOk(l,f){return Number(l.builtYear)>=2022&&Number(l.builtYear)<=new
 
 function hmBucket(l,f){
   const v=hmVotes()[hmId(l)]||{};
-  if(v.f==='n'&&v.c==='n')return 'no';
+  if(v.f==='n'||v.c==='n')return 'no';
   if(v.f==='y'&&v.c==='y')return 'both';
   if(v.f==='y'||v.c==='y'||v.f==='m'||v.c==='m')return 'short';
   // Hand-added places always sit in the main view, whatever the area reads as.

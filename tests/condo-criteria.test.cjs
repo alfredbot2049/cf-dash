@@ -20,3 +20,16 @@ const base={src:'mine',builtYear:2022,title:'Fully furnished',rent:3500,beds:2,b
 assert.equal(ctx.hmPass(base,f)&&ctx.hmAgeOk(base,f),true);
 for(const l of [{...base,builtYear:2008},{...base,builtYear:null},{...base,title:'Partially furnished'}])assert.equal(ctx.hmPass(l,f)&&ctx.hmAgeOk(l,f),false);
 console.log('PASS strict furnishing/year rules, manual listings, cache recovery and shared connection merge');
+// Either person's Pass persists and suppresses other units in the same building.
+const rejected={id:'https://example.com/a',name:'Test Residence · 900 sqft',Furnishing:'Fully furnished','Build year filter':2025,'Rent RM/month':3500,'Size sqft':900,'Fares verdict':'👎 Pass','Charlotte verdict':'💭 Maybe'};
+assert.equal(c.status(rejected),'Archived — Pass');
+assert.equal(c.status({...rejected,'Fares verdict':'💭 Maybe','Charlotte verdict':'👎 Pass'}),'Archived — Pass');
+store.condoCache={id,data:[rejected]};
+assert.equal(c.blockedDiscovery({title:'Fully furnished Test Residence 2 bedrooms'}),true);
+assert.equal(c.blockedDiscovery({title:'Different condo',area:'Cheras'}),true);
+assert.equal(c.blockedDiscovery({title:'Different condo',area:'Mont Kiara'}),false);
+store.condoHistory={[rejected.id]:{o:rejected,building:'testresidence',reason:'Review decision'}};
+assert.equal(c.status({...rejected,id:'https://example.com/new',name:'Test Residence · 1100 sqft','Fares verdict':'❤️ Shortlist','Charlotte verdict':'❤️ Shortlist'}),'Archived — Pass');
+assert.match(c.status({...rejected,name:'Different place','Fares verdict':'💭 Maybe','Rent RM/month':6000}),/^Excluded — over budget/);
+assert.equal(ctx.hmPass({...base,rent:5100},{...f,rentMax:4500}),false);
+console.log('PASS either-person archive, building-level repeat suppression, Cheras and hard budget exclusion');
