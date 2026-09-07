@@ -641,7 +641,7 @@ const LIB=[
 ];
 
 /* ---------- router / nav ---------- */
-const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'homes',ico:'🏠',lbl:'Homes'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
+const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'homes',ico:'🏠',lbl:'Condo Hunting'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
 const VIEWS=['home',...NAV.map(n=>n.id)];
 function renderTabs(cur){
   document.getElementById('tabs').innerHTML=NAV.map(n=>`<button class="tab ${cur===n.id?'on':''}" onclick="go('${n.id}')"><span class="d">${n.ico}</span>${n.lbl}</button>`).join('');
