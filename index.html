@@ -988,7 +988,7 @@ const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
  {id:'week',ico:'📅',name:"What's On",desc:'Live KL events',color:'var(--gold)',cnt:()=>{const today=new Date().toISOString().slice(0,10);const r=((window.CF_EVENTS&&CF_EVENTS.events)||[]).filter(e=>e.date>=today).length;const m=DB.get('events',[]).filter(e=>e.date>=today).length;const t=r+m;return t?t+' coming up':'loading…'}},
  {id:'trips',ico:'🗺️',name:'Asia Map',desc:'Explore all of Asia',color:'var(--blue)',cnt:()=>{const n=new Set(DB.get('places_asia',[]).map(p=>p.cc).filter(Boolean)).size;return n?n+' countries':'start exploring'}},
- {id:'homes',ico:'🏠',name:'Condo Hunting',desc:'Our next home',color:'var(--blue)',cnt:()=>{try{const n=hmPool('target').length;return n?n+' to review':'loading…'}catch(e){return 'loading…'}}},
+ {id:'homes',ico:'🏠',name:'Condo Hunting',desc:'Our next home',color:'var(--blue)',cnt:()=>{const n=DB.get('condoCache',{data:[]}).data.length;return n?n+' listings':'Our comparison'}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
