@@ -353,6 +353,7 @@
   .hm-f label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
   .hm-f input,.hm-f select{width:100%}
   </style>
+<link rel="stylesheet" href="condo.css">
 </head>
 <body>
 
@@ -417,7 +418,8 @@
 
   <!-- HOMES -->
   <section class="view" id="v-homes"><div class="pad">
-    <div class="vhead"><h2>Apartment Hunt</h2><div class="sub">Live KL rentals, pulled nightly. Say yes, maybe or no — you both see both.</div></div>
+    <div class="vhead"><h2>Condo Hunting</h2><div class="sub">Find our next home. The listings, the details, and what we both think.</div></div>
+    <div class="ch-mode"><button data-condo-mode="comparison" onclick="CondoHunting.mode('comparison')">Our comparison</button><button data-condo-mode="explore" onclick="CondoHunting.mode('explore')">Explore rentals</button></div><div id="condo-root"></div><div id="hm-legacy" hidden>
     <div class="subtabs" id="hm-subtabs"></div>
     <div class="card" id="hm-filters"></div>
     <div class="muted" style="font-size:12.5px;margin:12px 2px 4px" id="hm-count"></div>
@@ -457,7 +459,7 @@
         <button class="btn primary" onclick="hmAdd()">Add</button>
       </div>
     </div>
-    <div class="note" id="hm-note-box"></div>
+    <div class="note" id="hm-note-box"></div></div>
   </div></section>
 
   <!-- TRIPS -->
@@ -595,6 +597,7 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="listings.js"></script>
+<script src="condo.js"></script>
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
@@ -944,7 +947,8 @@ function hmCard(l,f){
   </div>`;
 }
 
-function hmRender(){
+function hmRender(){CondoHunting.render();}
+function hmLegacyRender(){
   const f=hmF();
   const tabs=[['target','Your areas'],['all','Everything'],['short','Shortlist'],['both','Both yes'],['no','Passed']];
   document.getElementById('hm-subtabs').innerHTML=tabs.map(([k,l])=>
@@ -984,7 +988,7 @@ const TILES=[
  {id:'movies',ico:'🎬',name:'Movies & Shows',desc:'Watchlist, ranked',color:'var(--terra)',cnt:()=>{const l=DB.get('movies',[]).filter(x=>!x.passed).length;return l?l+' to watch':'add your first'}},
  {id:'week',ico:'📅',name:"What's On",desc:'Live KL events',color:'var(--gold)',cnt:()=>{const today=new Date().toISOString().slice(0,10);const r=((window.CF_EVENTS&&CF_EVENTS.events)||[]).filter(e=>e.date>=today).length;const m=DB.get('events',[]).filter(e=>e.date>=today).length;const t=r+m;return t?t+' coming up':'loading…'}},
  {id:'trips',ico:'🗺️',name:'Asia Map',desc:'Explore all of Asia',color:'var(--blue)',cnt:()=>{const n=new Set(DB.get('places_asia',[]).map(p=>p.cc).filter(Boolean)).size;return n?n+' countries':'start exploring'}},
- {id:'homes',ico:'🏠',name:'Apartment Hunt',desc:'Live KL rentals',color:'var(--blue)',cnt:()=>{try{const n=hmPool('target').length;return n?n+' to review':'loading…'}catch(e){return 'loading…'}}},
+ {id:'homes',ico:'🏠',name:'Condo Hunting',desc:'Our next home',color:'var(--blue)',cnt:()=>{try{const n=hmPool('target').length;return n?n+' to review':'loading…'}catch(e){return 'loading…'}}},
  {id:'cooking',ico:'🍳',name:'Cooking',desc:'Step-by-step',color:'var(--green)',cnt:()=>recipes().length+' recipes'},
  {id:'check',ico:'✅',name:'Checklist',desc:'Shared to-dos',color:'var(--terra)',cnt:()=>{const o=allChecks();const items=[].concat(...Object.values(o));const open=items.filter(i=>!i.done).length;return open?open+' open':(items.length?'all done ✓':'nothing yet')}},
  {id:'bills',ico:'🧾',name:'Bills',desc:'Shared expenses',color:'var(--gold)',cnt:()=>{const l=DB.get('bills',[]).length;return l?l+' logged':'nothing owed'}},
@@ -1571,6 +1575,7 @@ function spRender(){
 
 /* ---------- boot ---------- */
 async function boot(){
+  CondoHunting.acceptLink();
   applyTheme(DB.get('theme','dark'));
   // Finish parsing a magic-link callback before go() normalises the URL hash.
   // Supabase implicit links carry the session in that hash.
@@ -1588,7 +1593,7 @@ async function boot(){
   // first render so they arrive looking at the place they just sent over.
   let sent=false;
   try{sent=!!hmImport();}catch(e){}
-  if(sent)location.hash='homes';
+  if(sent){location.hash='homes';CondoHunting.mode('explore');}
   go(location.hash.replace('#','')||'home');
 }
 boot();
