@@ -353,7 +353,7 @@
   .hm-f label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
   .hm-f input,.hm-f select{width:100%}
   </style>
-<link rel="stylesheet" href="condo.css?v=20260907-map">
+<link rel="stylesheet" href="condo.css?v=20260907-criteria">
 </head>
 <body>
 
@@ -452,7 +452,7 @@
       </div>
       <div class="row" style="margin-top:9px">
         <input id="hm-a-url" placeholder="Link to the listing" style="flex:3 1 220px">
-        <input id="hm-a-year" type="number" placeholder="Built" style="flex:1 1 90px">
+        <input id="hm-a-year" type="number" placeholder="Completed year" style="flex:1 1 90px"><select id="hm-a-furnishing" aria-label="Furnishing" style="flex:1 1 180px"><option value="">Furnishing unconfirmed</option><option>Fully furnished</option><option>Partially furnished</option><option>Unfurnished</option></select>
       </div>
       <div class="row" style="margin-top:9px">
         <input id="hm-a-img" placeholder="Photo links, comma separated (optional)" style="flex:3 1 220px">
@@ -597,8 +597,8 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="listings.js"></script>
-<script src="condo-map.js?v=20260907-map"></script>
-<script src="condo.js?v=20260907-map"></script>
+<script src="condo-map.js?v=20260907-criteria"></script>
+<script src="condo.js?v=20260907-criteria"></script>
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
@@ -655,7 +655,7 @@ function go(v){
   window.scrollTo({top:0,behavior:'instant'in window?'instant':'auto'});
   ({movies:mvRender,week:wkRender,trips:trRender,homes:hmRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||(()=>{}))();
 }
-window.addEventListener('hashchange',()=>go(location.hash.replace('#','')||'home'));
+window.addEventListener('hashchange',()=>{window.CondoHunting?.acceptLink();go(location.hash.replace('#','')||'home');});
 
 /* ---------- theme ---------- */
 function applyTheme(t){
@@ -674,13 +674,13 @@ function sbReady(){return !!(sb&&cfUser);}
 function onLocalChange(key){if(sbReady()&&!pulling&&!LOCAL_ONLY.includes(key))schedulePush();}
 function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNow,700);}
 async function pushNow(){if(!sbReady())return;try{await sb.from('cf_state').update({data:syncable(),updated_by:cfUser.name,updated_at:new Date().toISOString()}).eq('id','shared');}catch(e){}}
-function applyRemote(data){if(!data)return;pulling=true;try{Object.entries(data).forEach(([k,v])=>{if(k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));});}finally{pulling=false;}rerender();}
+function applyRemote(data){if(!data)return;data=window.CondoHunting?.mergeSource(data,syncable())||data;pulling=true;try{Object.entries(data).forEach(([k,v])=>{if(k.startsWith('cf-')&&!LOCAL_ONLY.includes(k))localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));});}finally{pulling=false;}rerender();}
 function rerender(){const v=location.hash.replace('#','')||'home';({movies:mvRender,week:wkRender,trips:trRender,homes:hmRender,cooking:ckRender,check:clRender,bills:blRender,sport:spRender,home:renderTiles}[v]||renderTiles)();}
 async function pullMerge(){try{
   const {data}=await sb.from('cf_state').select('data').eq('id','shared').single();
   const remote=(data&&data.data)||{},local=syncable();
   if(!Object.keys(remote).length){await sb.from('cf_state').update({data:local,updated_by:cfUser.name}).eq('id','shared');}
-  else{const merged={...local,...remote};applyRemote(merged);await sb.from('cf_state').update({data:merged,updated_by:cfUser.name}).eq('id','shared');}
+  else{const merged={...local,...(window.CondoHunting?.mergeSource(remote,local)||remote)};applyRemote(merged);await sb.from('cf_state').update({data:merged,updated_by:cfUser.name}).eq('id','shared');}
 }catch(e){}}
 let lastSeen=null,pollTimer=null;
 function subscribeRealtime(){try{sb.channel('cf-shared').on('postgres_changes',{event:'UPDATE',schema:'public',table:'cf_state',filter:'id=eq.shared'},p=>{if(p.new){lastSeen=p.new.updated_at;applyRemote(p.new.data);}}).subscribe();}catch(e){}}
@@ -700,7 +700,7 @@ async function signOut(){try{await sb.auth.signOut();}catch(e){}closeSettings();
 function openAuth(){if(!sb){alert('Sync needs internet — open the live link.');return;}document.getElementById('authbox').classList.add('show');authErr('');}
 function closeAuth(){document.getElementById('authbox').classList.remove('show');}
 function authErr(t,ok=false){const el=document.getElementById('auth-err');el.textContent=t||'';el.className='modal-status '+(t?(ok?'ok':'err'):'');}
-function authRedirectUrl(){return location.origin+location.pathname;}
+function authRedirectUrl(){const id=window.CondoHunting?.sourceId();return location.origin+location.pathname+(id?'#homes?sheet='+encodeURIComponent(id):'');}
 async function authGo(){
   const email=document.getElementById('auth-email').value.trim(),pw=document.getElementById('auth-pass').value;
   if(!email||!pw){authErr('Enter email and password');return;}
@@ -801,7 +801,7 @@ function hmAdd(){
     src:'mine', ref:uid(), title:name, building:name,
     url:g('hm-a-url'), rent,
     beds:+g('hm-a-beds')||null, baths:+g('hm-a-baths')||null, size:+g('hm-a-size')||null,
-    area:g('hm-a-area')||'Added by hand',
+    area:g('hm-a-area')||'Added by hand', furnishing:g('hm-a-furnishing'),
     builtYear:(yr>=1950&&yr<=new Date().getFullYear()+6)?yr:null,
     // Only https urls, same rule the fetcher applies. These get rendered into
     // the page, so a javascript: or data: url must not survive a paste.
@@ -809,7 +809,7 @@ function hmAdd(){
     desc:'', transit:'', agent:'', listedAt:new Date().toISOString().slice(0,10),
   };
   DB.set('homesManual',hmMine().concat([l]));
-  ['hm-a-name','hm-a-rent','hm-a-area','hm-a-beds','hm-a-baths','hm-a-size','hm-a-url','hm-a-year','hm-a-img']
+  ['hm-a-name','hm-a-rent','hm-a-area','hm-a-beds','hm-a-baths','hm-a-size','hm-a-url','hm-a-year','hm-a-img','hm-a-furnishing']
     .forEach(id=>document.getElementById(id).value='');
   hmRender();
 }
@@ -833,7 +833,7 @@ function hmImport(){
     url:/^https:\/\/\S+$/i.test(raw.url||'')?raw.url:'',
     rent:+raw.rent,
     beds:+raw.beds||null, baths:+raw.baths||null, size:+raw.size||null,
-    area:str(raw.area,40)||'Added by hand',
+    area:str(raw.area,40)||'Added by hand', furnishing:str(raw.furnishing,100),
     builtYear:(yr>=1950&&yr<=new Date().getFullYear()+6)?yr:null,
     imgs:(Array.isArray(raw.imgs)?raw.imgs:[]).filter(u=>/^https:\/\/\S+$/i.test(u)).slice(0,20),
     desc:str(raw.desc,900), transit:'', agent:str(raw.agent,60),
@@ -875,21 +875,15 @@ function hmMore(id){hmOpen[id]=!hmOpen[id];hmRender();}
 // One place decides whether a listing is in play, so the counts on the tabs
 // and the list itself can never disagree.
 function hmPass(l,f){
-  // A place one of them added by hand is never filtered out. They chose to put
-  // it there, so a filter silently eating it is a bug, not a feature — and it
-  // would happen constantly, because Fares' own current building is older than
-  // the max-age rule he set.
-  if(l.src==='mine')return true;
+  if(!CondoHunting.eligible(l.builtYear,[l.furnishing,l.title,l.desc].filter(Boolean).join(' ')))return false;
   return (!f.beds||(l.beds||0)>=f.beds)
       && (!f.baths||(l.baths||0)>=f.baths)
       && (!f.size||(l.size||0)>=f.size)
       && (!f.area||(l.area||'').toLowerCase().includes(f.area.toLowerCase()))
       && l.rent>=f.rentMin;
 }
-// Age is kept separate from hmPass on purpose. A listing whose build year we
-// do not know must not be silently dropped by an age filter — we cannot prove
-// it fails, so it stays visible and says "year unknown".
-function hmAgeOk(l,f){if(l.src==='mine')return true;const a=hmAge(l);return !f.maxAge||a===null||a<=f.maxAge;}
+// Completion is a fixed requirement, including manually added listings.
+function hmAgeOk(l,f){return Number(l.builtYear)>=2022&&Number(l.builtYear)<=new Date().getFullYear();}
 
 function hmBucket(l,f){
   const v=hmVotes()[hmId(l)]||{};
@@ -961,15 +955,15 @@ function hmLegacyRender(){
     <div><label>Beds min</label><input type="number" value="${f.beds}" onchange="hmSetF('beds',+this.value||0)"></div>
     <div><label>Baths min</label><input type="number" value="${f.baths}" onchange="hmSetF('baths',+this.value||0)"></div>
     <div><label>Sqft min</label><input type="number" step="50" value="${f.size}" onchange="hmSetF('size',+this.value||0)"></div>
-    <div><label>Max age (yrs)</label><input type="number" value="${f.maxAge}" onchange="hmSetF('maxAge',+this.value||0)"></div>
+    <div><label>Completion</label><input value="2022 or later" readonly aria-label="Completed 2022 or later"></div>
     <div style="grid-column:span 2"><label>Area contains</label><input placeholder="e.g. Bangsar" value="${esc(f.area)}" onchange="hmSetF('area',this.value.trim())"></div>
   </div>
-  <div style="margin-top:11px"><button class="btn sm" onclick="hmReset()">Back to the brief</button></div>`;
+  <p class="ch-sync">Only fully furnished apartments completed from 2022 onwards. Unknown or conflicting details are hidden.</p><div style="margin-top:11px"><button class="btn sm" onclick="hmReset()">Back to the brief</button></div>`;
 
   const list=hmPool(hmTab).sort((a,b)=>a.rent-b.rent);
   const over=list.filter(l=>l.rent>f.rentMax).length;
   document.getElementById('hm-count').textContent=
-    list.length?`${list.length} places${over?` · ${over} over your ${f.rentMax.toLocaleString()} ceiling, greyed out not hidden`:''}`:'';
+    list.length?`${list.length} places${over?` · ${over} over your ${f.rentMax.toLocaleString()} ceiling`:''}`:'';
   document.getElementById('hm-list').innerHTML=list.length
     ? list.map(l=>hmCard(l,f)).join('')
     : `<div class="empty"><span class="big">🏠</span>Nothing matches these filters. Loosen one above.</div>`;

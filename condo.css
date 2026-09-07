@@ -14,3 +14,21 @@
 .wrap:has(#v-homes.active [data-condo-mode="map"][aria-pressed="true"]){max-width:1240px}#v-homes:has([data-condo-mode="map"][aria-pressed="true"])>.pad{padding:24px 22px 36px}.cm-cluster>span{background:#fffef9;color:#315e49;border:2px solid #315e49;border-radius:22px}.cm-shell{scroll-margin-top:125px}@media(max-width:700px){#v-homes:has([data-condo-mode="map"][aria-pressed="true"])>.pad{padding:20px 14px 28px}.cm-map{height:400px}}
 
 .cm-shell .btn:hover:not(:disabled){background:#e5eddf!important}.cm-shell .btn:active:not(:disabled),.cm-building-heading button:active{background:#d8e5d2!important}.cm-shell .btn:disabled{opacity:.5;cursor:not-allowed}.cm-building-heading button:hover{color:#286047}.cm-pin>span{min-height:44px}.cm-map .leaflet-control-zoom a{width:44px;height:44px;line-height:44px}.cm-actions a{display:inline-flex;align-items:center;min-height:44px}.cm-map-wrap,.cm-card,.cm-building{scroll-margin-top:125px}.cm-results-heading h3{overflow-wrap:anywhere}.cm-card-top>div{min-width:0}.cm-card-top h4{overflow-wrap:anywhere}@media(max-width:360px){.cm-card-top{display:block}.cm-card-top img{width:100%;height:140px;margin-bottom:12px}.cm-legend{gap:12px}.cm-verdicts{grid-template-columns:minmax(0,1fr)}}
+/* One palette across the comparison, map and discovery views. */
+#v-homes{--ch-surface:#fffef9;--ch-soft:#edf3e9;--ch-link:#286047;--ink:var(--ch-ink);--ink2:var(--ch-ink);--fg:var(--ch-ink);--muted:var(--ch-muted);--card:var(--ch-surface);--paper2:var(--ch-soft);--line:var(--ch-line);--line2:var(--ch-line);--cardEdge:var(--ch-line)}
+#v-homes a{color:var(--ch-link)}
+#v-homes .ch-card,#v-homes .cm-card,#v-homes .btn,#v-homes select,#v-homes input{background:var(--ch-surface);color:var(--ch-ink);border-color:var(--ch-line);color-scheme:light}
+#v-homes .ch-commute,#v-homes .ch-status,#v-homes .ch-no-photo{background:var(--ch-soft);color:var(--ch-ink)}
+#v-homes .ch-mode button,#v-homes .ch-filter button{color:var(--ch-ink);border-color:var(--ch-line)}
+#v-homes .ch-mode button[aria-pressed=true],#v-homes .ch-filter button[aria-pressed=true]{background:#315e49;color:#fff;border-color:#315e49}
+#v-homes .hm.over{opacity:1}
+html[data-theme=light] #v-homes .hm-votes button.on.y{color:#216337}html[data-theme=light] #v-homes .hm-votes button.on.m{color:#76510a}html[data-theme=light] #v-homes .hm-votes button.on.n{color:#9b3724}
+html:not([data-theme=light]) #v-homes{--ch-ink:#eef1f5;--ch-muted:#b8c2cd;--ch-line:#44515f;--ch-paper:#151c24;--ch-surface:#202a35;--ch-soft:#293744;--ch-link:#a9cfff}
+html:not([data-theme=light]) #v-homes select,html:not([data-theme=light]) #v-homes input{color-scheme:dark}
+html:not([data-theme=light]) #v-homes .ch-error,html:not([data-theme=light]) #v-homes .cm-missing{background:#443824;color:#f5e7cd}
+html:not([data-theme=light]) #v-homes .ch-status.excluded{background:#38404a;color:#d5dbe3}
+html:not([data-theme=light]) #v-homes .ch-status.shortlisted{background:#254532;color:#c7f2d2}
+html:not([data-theme=light]) #v-homes .cm-shell .btn:hover:not(:disabled){background:#344859!important}
+html:not([data-theme=light]) #v-homes .cm-shell .btn:active:not(:disabled){background:#40576a!important}
+html:not([data-theme=light]) #v-homes .cm-building-heading button:hover{color:#a9cfff}
+#v-homes .cm-map .leaflet-control-attribution a{color:#286047}
