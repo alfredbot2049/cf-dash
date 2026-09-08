@@ -33,3 +33,11 @@ assert.equal(c.status({...rejected,id:'https://example.com/new',name:'Test Resid
 assert.match(c.status({...rejected,name:'Different place','Fares verdict':'💭 Maybe','Rent RM/month':6000}),/^Excluded — over budget/);
 assert.equal(ctx.hmPass({...base,rent:5100},{...f,rentMax:4500}),false);
 console.log('PASS either-person archive, building-level repeat suppression, Cheras and hard budget exclusion');
+// An explicitly reopened unit can be reviewed without reviving a rejected unit.
+const reopened={...rejected,id:'https://example.com/reopened','Fares verdict':'🤔 Not decided','Charlotte verdict':'🤔 Not decided','Review override':'Reopened for review'};
+assert.equal(c.status(reopened),'To review');
+assert.equal(c.status(rejected),'Archived — Pass');
+assert.equal(c.status({...reopened,'Charlotte verdict':'👎 Pass'}),'Archived — Pass');
+assert.equal(c.status({...reopened,'Furnishing':'Partially furnished'}),'Needs checking — completion or furnishing');
+assert.equal(c.status({...reopened,'Rent RM/month':6000}),'Excluded — over budget or price unknown');
+console.log('PASS explicit unit reopening preserves old rejection and enforces fresh votes and eligibility');
