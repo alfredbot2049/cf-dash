@@ -353,7 +353,7 @@
   .hm-f label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
   .hm-f input,.hm-f select{width:100%}
   </style>
-<link rel="stylesheet" href="condo.css?v=20260907-review">
+<link rel="stylesheet" href="condo.css?v=20260908-details">
 </head>
 <body>
 
@@ -597,8 +597,8 @@
 <script src="posters.js"></script>
 <script src="events.js"></script>
 <script src="listings.js"></script>
-<script src="condo-map.js?v=20260907-review"></script>
-<script src="condo.js?v=20260908-sheet"></script>
+<script src="condo-map.js?v=20260908-details"></script>
+<script src="condo.js?v=20260908-details"></script>
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
@@ -689,7 +689,8 @@ async function startSession(user){
   cfUser={id:user.id,email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'Fares'};
   setGate(false);
   DB.set('me',/^char/i.test(cfUser.name)?'C':'F');renderAcct();
-  pullMerge();subscribeRealtime();
+  window.cfSyncPending=true;rerender();
+  pullMerge().finally(()=>{window.cfSyncPending=false;rerender();});subscribeRealtime();
   clearInterval(pollTimer);pollTimer=setInterval(pollPull,12000);      // safety net if realtime drops
   window.addEventListener('focus',pollPull);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollPull();});
@@ -780,9 +781,8 @@ async function sbBoot(){
 // The fetcher deliberately casts a wider net than this, so loosening a filter
 // never needs a re-fetch.
 const HM_DEFAULTS={rentMin:3000,rentMax:4300,beds:2,baths:2,size:1000,maxAge:3,area:''};
-// The areas that actually matter, in his words: Bangsar, Mont Kiara, Bangsar
-// South, weighted toward cutting Charlotte's commute to Shah Alam.
-const HM_TARGET=/bangsar|mont kiara|kerinchi|pantai|damansara|hartamas|kl sentral|brickfields/i;
+// All recommendation tabs enforce the user's marked PJ–Bangsar corridor.
+const hmInArea=l=>CondoHunting.areaDecision(l)==='inside';
 let hmTab='target', hmPix={}, hmOpen={};
 
 const hmF=()=>Object.assign({},HM_DEFAULTS,DB.get('homeFilters',{}));
@@ -870,7 +870,7 @@ function hmSlide(id,d){
   const l=hmAll().find(x=>hmId(x)===id); if(!l||!l.imgs.length)return;
   hmPix[id]=((hmPix[id]||0)+d+l.imgs.length)%l.imgs.length; hmRender();
 }
-function hmMore(id){hmOpen[id]=!hmOpen[id];hmRender();}
+function hmMore(id){CondoHunting.discoveryDetails(id);}
 
 // One place decides whether a listing is in play, so the counts on the tabs
 // and the list itself can never disagree.
@@ -893,7 +893,7 @@ function hmBucket(l,f){
   if(v.f==='y'||v.c==='y'||v.f==='m'||v.c==='m')return 'short';
   // Hand-added places always sit in the main view, whatever the area reads as.
   if(l.src==='mine')return 'target';
-  return HM_TARGET.test(l.area||'')?'target':'all';
+  return hmInArea(l)?'target':'all';
 }
 function hmPool(tab){
   const f=hmF();
@@ -903,7 +903,7 @@ function hmPool(tab){
     if(tab==='both')return b==='both';
     if(tab==='short')return b==='short'||b==='both';
     if(tab==='no')return b==='no';
-    if(tab==='target')return (l.src==='mine'||HM_TARGET.test(l.area||''))&&b!=='no';
+    if(tab==='target')return (l.src==='mine'||hmInArea(l))&&b!=='no';
     return b!=='no';
   });
 }
@@ -937,7 +937,7 @@ function hmCard(l,f){
       ${l.desc?`<div class="hm-more ${hmOpen[id]?'open':''}">${esc(l.desc)}</div>`:''}
       <div class="hm-foot">
         ${l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open listing ↗</a>`:'<span class="hm-area">Added by hand</span>'}
-        <span>${l.desc?`<button class="btn sm" onclick="hmMore('${id}')">${hmOpen[id]?'Less':'Details'}</button>`:''}${l.src==='mine'?`<button class="btn sm" onclick="hmDel('${id}')">Remove</button>`:''}</span>
+        <span><button class="btn sm" onclick="hmMore('${id}')">Details</button>${l.src==='mine'?`<button class="btn sm" onclick="hmDel('${id}')">Remove</button>`:''}</span>
       </div>
     </div>
   </div>`;
@@ -959,7 +959,7 @@ function hmLegacyRender(){
     <div><label>Completion</label><input value="2022 or later" readonly aria-label="Completed 2022 or later"></div>
     <div style="grid-column:span 2"><label>Area contains</label><input placeholder="e.g. Bangsar" value="${esc(f.area)}" onchange="hmSetF('area',this.value.trim())"></div>
   </div>
-  <p class="ch-sync">Only fully furnished apartments completed from 2022 onwards. Unknown or conflicting details are hidden.</p><div style="margin-top:11px"><button class="btn sm" onclick="hmReset()">Back to the brief</button></div>`;
+  <p class="ch-sync">Only fully furnished apartments completed from 2022 onwards, inside your PJ–Bangsar search corridor. Outside areas and unconfirmed locations are hidden.</p><div style="margin-top:11px"><button class="btn sm" onclick="hmReset()">Back to the brief</button></div>`;
 
   const list=hmPool(hmTab).sort((a,b)=>a.rent-b.rent);
   const over=list.filter(l=>l.rent>f.rentMax).length;

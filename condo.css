@@ -42,3 +42,5 @@ html:not([data-theme=light]) #v-homes .cm-building-heading button:hover{color:#a
 .ch-tour a { display: inline-block; padding: 10px 14px; border: 1px solid var(--line, #8886); border-radius: 10px; color: inherit; font-weight: 650; text-decoration: none; }
 .ch-tour a:hover { text-decoration: underline; }
 .ch-tour a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+
+.ch-detail-photo{width:100%;max-height:320px;object-fit:cover;border-radius:12px;margin:8px 0 24px}.ch-research-section{margin:30px 0}.ch-research-section h2{font-size:21px;border-bottom:2px solid var(--ch-line);padding-bottom:12px}.ch-research .ch-field p{white-space:pre-line;overflow-wrap:anywhere}.ch-research .ch-field h4{font-size:14px}.ch-research .ch-field{margin-top:18px}
