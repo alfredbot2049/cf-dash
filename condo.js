@@ -27,7 +27,7 @@ window.CondoHunting=(()=>{
   }
   function archived(o){
     const v=votes(o);if(isPass(v.F)||isPass(v.C)||isPass(o['Building decision']))return true;
-    if(o['Review override']==='Reopened for review')return false;
+    if(o['Review override']==='Reopened for review'&&!historyItems()[o.id])return false;
     return Object.values(historyItems()).some(h=>h.building===building(o));
   }
   function blockedDiscovery(l){

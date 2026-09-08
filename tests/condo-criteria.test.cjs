@@ -41,3 +41,7 @@ assert.equal(c.status({...reopened,'Charlotte verdict':'👎 Pass'}),'Archived �
 assert.equal(c.status({...reopened,'Furnishing':'Partially furnished'}),'Needs checking — completion or furnishing');
 assert.equal(c.status({...reopened,'Rent RM/month':6000}),'Excluded — over budget or price unknown');
 console.log('PASS explicit unit reopening preserves old rejection and enforces fresh votes and eligibility');
+
+store.condoHistory[reopened.id]={o:reopened,building:"testresidence",reason:"Passed after reopening"};
+assert.equal(c.status(reopened),"Archived — Pass");
+console.log("PASS a later rejection of the reopened unit remains archived from history");
