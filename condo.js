@@ -42,6 +42,7 @@ window.CondoHunting=(()=>{
   // Conservative interpretation of the user-marked PJ–Bangsar corridor.
   // Broad city labels and nearby-area claims in adverts do not establish location.
   function areaDecision(o){
+    if(o['Review override']==='Location approved for viewing')return 'inside';
     const area=String(o.Neighbourhood||o.area||'');
     const name=String(o.name||o.building||o.title||'');
     if(/titiwangsa|d[’']?\s*bright{1,2}on|wangsa maju|sentul|cheras|maluri|cochrane|damansara|mont kiara|hartamas|klcc|ampang|kepong|puchong|shah alam|subang/i.test(area+' '+name))return 'outside';

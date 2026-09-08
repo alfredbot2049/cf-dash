@@ -94,3 +94,10 @@ assert.equal(c.areaDecision({area:'Taman Desa'}),'inside');
 assert.equal(c.areaDecision({area:'KL City',desc:'Near Bangsar'}),'unconfirmed');
 assert.equal(c.status({...reopened,Neighbourhood:'Titiwangsa',id:'https://example.com/outside'}),'Excluded — outside your search area');
 console.log('PASS hard search-area exclusions across discovery and saved review, including ambiguous location labels');
+
+const approved={...reopened,id:'https://example.com/user-approved',name:'User approved residence',Neighbourhood:'Unmapped area','Review override':'Location approved for viewing','Fares verdict':'❤️ Shortlist','Charlotte verdict':'❤️ Shortlist'};
+assert.equal(c.status(approved),'❤️ Both shortlist');
+assert.equal(c.status({...approved,Furnishing:'Partially furnished'}),'Needs checking — completion or furnishing');
+assert.equal(c.status({...approved,'Fares verdict':'👎 Pass'}),'Archived — Pass');
+assert.equal(c.blockedDiscovery({area:'Unmapped area',title:'Another unit'}),true);
+console.log('PASS explicit viewing approval accepts only that saved location and preserves furnishing and Pass rules');
