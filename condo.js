@@ -70,9 +70,20 @@ window.CondoHunting=(()=>{
     root.insertAdjacentHTML('beforeend',`<p class="ch-sync">App decisions sync across signed-in devices. ${link(`https://docs.google.com/spreadsheets/d/${id}/edit`,'Source sheet')} · Full evidence is available on each card.</p>`);
   }
   function commute(o){
-    const time=o['CEVA → home · leave 6 pm']||'',route=o['Route · 6 pm'];
+    const time=o['CEVA → home']||o['CEVA → home · leave 6 pm']||'',route=commuteRoute(o);
     const label=/\d/.test(time)?time:'Drive time unconfirmed';
     return link(route,label)||e(label);
+  }
+  function commuteRoute(o){
+    if(url(o['Route · 6 pm']))return url(o['Route · 6 pm']);
+    const origin=o['Commute origin'],destination=o['Map coordinates'];
+    if(!origin||!/^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(destination||''))return '';
+    return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(origin)+'&destination='+encodeURIComponent(destination)+'&travelmode=driving';
+  }
+  const mapFields=['Exact address / Maps','Local shops / Maps','Nearby mall / Maps'];
+  function placeLink(key,value){
+    if(!mapFields.includes(key)||!value)return '';
+    return link(url(value)||'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(value),url(value)?'Open map ↗':value);
   }
   function pool(o){
     return `<span>☀️ Sun: ${e(o['Pool sun window']||'timing unconfirmed')}</span><br><span>🏢 Building shade: ${e(o['Pool shade window']||'timing unconfirmed')}</span>`;
@@ -81,7 +92,7 @@ window.CondoHunting=(()=>{
     const review=o['Review notes']||'',personal=DB.get('condoReviewNotes',{})[o.id]||'';
     return `<article class="ch-card ch-review" id="ch-card-${index}"><div class="ch-heading"><div><span class="ch-area">${e(o.Neighbourhood)} · ${e(o['Build year filter']||'Year unconfirmed')}</span><h3>${e(o.name)}</h3><span class="ch-status ${st==='❤️ Both shortlist'?'shortlisted':''}">${e(st)}</span></div>${url(o['Photo URL'])?`<img class="ch-thumb" loading="lazy" src="${e(url(o['Photo URL']))}" alt="Listing photo" onerror="this.hidden=true">`:''}</div><div class="ch-body"><div class="ch-price">RM ${Number(o['Rent RM/month']).toLocaleString()}<small> / month</small></div><p class="ch-spec">${e(o['Size sqft'])} sqft · ${e(o.Bedrooms)} beds · ${e(o.Bathrooms)} baths</p><p class="ch-furnishing">${e(brief(o.Furnishing||'Furnishing unconfirmed',105))}</p>${url(o['Condo YouTube tour'])?`<div class="ch-tour">${link(o['Condo YouTube tour'],'▶ '+(o['Condo tour label']||'Watch condo tour'))}</div>`:''}<div class="ch-facts"><div><h4>🚗 CEVA → home</h4><p>${commute(o)}</p><small>Evening drive · traffic varies</small></div><div><h4>🏊 Pool</h4><p>${pool(o)}</p></div><div><h4>🏋️ Gym</h4><p>• ${e(brief(o['Gym summary']||o['Gym equipment']||'Equipment not verified.',120))}</p></div><div><h4>🚶 Around you</h4><p>• ${e(brief(o['Area summary']||o['Walkability evidence']||'Walkability not verified.',120))}</p></div><div><h4>🛗 Lifts</h4><p>• ${e(brief(o['Lift summary']||'Lift count and units per floor unconfirmed.',120))}</p></div></div>${review?`<div class="ch-decision"><h4>Review decision</h4><p>• ${e(brief(review,140))}</p>${o['Review date']?`<small>${e(o['Review date'])}</small>`:''}</div>`:''}<div class="ch-votes">${[['F','Fares'],['C','Charlotte']].map(([k,n])=>`<div><label class="ch-vlabel" for="ch-${index}-${k}">${n}</label><select id="ch-${index}-${k}" ${st.startsWith('Archived')?'disabled':''} onchange="CondoHunting.vote(${index},'${k}',this.value)">${verdicts.map(x=>`<option ${v[k]===x?'selected':''}>${e(x)}</option>`).join('')}</select></div>`).join('')}</div>${st.startsWith('Archived')?'<p class="ch-sync">Archived condo: other units here will not be proposed again. Its review history is kept here.</p>':''}<label class="ch-note">Add a review note<textarea rows="2" onchange="CondoHunting.note(${index},this.value)" placeholder="What works, what rules it out…">${e(personal)}</textarea></label><div class="ch-links">${link(o.id,'Listing ↗')}${link(o['Area YouTube tour'],'Area tour ↗')}<button class="btn" onclick="CondoHunting.details(${index})">Full research</button></div></div></article>`;
   }
-  function research(o,index){return `<article id="ch-detail" class="ch-research"><button id="ch-back" class="btn" onclick="CondoHunting.details(null)">← Back to reviews</button><h3>${e(o.name)}</h3><p>Source details and calculations. Video claims and estimates still need confirmation for the exact unit.</p><div class="ch-field"><h4>🚗 CEVA → home</h4><p>${commute(o)}</p></div>${Object.entries(o).filter(([k,v])=>!['id','name','Photo URL','Review override','CEVA → home · leave 6 pm','CEVA → home · leave 6:30 pm','Route · 6 pm','Route · 6:30 pm'].includes(k)&&v).map(([k,v])=>url(v)?`<div class="ch-field"><h4>${e(k)}</h4>${link(v,'Open source ↗')}</div>`:field(o,k)).join('')}</article>`;}
+  function research(o,index){return `<article id="ch-detail" class="ch-research"><button id="ch-back" class="btn" onclick="CondoHunting.details(null)">← Back to reviews</button><h3>${e(o.name)}</h3><p>Listing details. Confirm video claims and estimates for the exact unit.</p><div class="ch-field"><h4>🚗 CEVA → home</h4><p>${commute(o)}</p></div>${Object.entries(o).filter(([k,v])=>!['id','name','Photo URL','Review override','CEVA → home','Commute origin','CEVA → home · leave 6 pm','CEVA → home · leave 6:30 pm','Route · 6 pm','Route · 6:30 pm'].includes(k)&&v).map(([k,v])=>mapFields.includes(k)?`<div class="ch-field"><h4>${e(k)}</h4>${placeLink(k,v)}</div>`:url(v)?`<div class="ch-field"><h4>${e(k)}</h4>${link(v,'Open source ↗')}</div>`:field(o,k)).join('')}</article>`;}
 
-  return {render,refresh,connect,vote,note,acceptLink,parse,eligible,sourceId,mergeSource,status,archived,blockedDiscovery,details:index=>{detail=index;render();},filter:k=>{filter=k==='all'?'active':k;detail=null;render();},mode:k=>{mode=k;render();}};
+  return {render,refresh,connect,vote,note,acceptLink,parse,commuteRoute,eligible,sourceId,mergeSource,status,archived,blockedDiscovery,details:index=>{detail=index;render();},filter:k=>{filter=k==='all'?'active':k;detail=null;render();},mode:k=>{mode=k;render();}};
 })();

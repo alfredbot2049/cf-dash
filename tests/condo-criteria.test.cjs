@@ -45,3 +45,12 @@ console.log('PASS explicit unit reopening preserves old rejection and enforces f
 store.condoHistory[reopened.id]={o:reopened,building:"testresidence",reason:"Passed after reopening"};
 assert.equal(c.status(reopened),"Archived — Pass");
 console.log("PASS a later rejection of the reopened unit remains archived from history");
+
+// Named Maps hyperlinks export as labels; the compact sheet supplies route endpoints.
+const route=c.commuteRoute({'Commute origin':'Example office, Main Street','Map coordinates':'3.12, 101.67'});
+assert.equal(new URL(route).searchParams.get('origin'),'Example office, Main Street');
+assert.equal(new URL(route).searchParams.get('destination'),'3.12, 101.67');
+assert.equal(new URL(route).searchParams.get('travelmode'),'driving');
+assert.equal(c.commuteRoute({'Commute origin':'Example office'}),'');
+assert.equal(c.commuteRoute({'Route · 6 pm':'https://www.google.com/maps/dir/example'}),'https://www.google.com/maps/dir/example');
+console.log('PASS compact-sheet driving links and missing destination handling');
