@@ -101,3 +101,16 @@ assert.equal(c.status({...approved,Furnishing:'Partially furnished'}),'Needs che
 assert.equal(c.status({...approved,'Fares verdict':'👎 Pass'}),'Archived — Pass');
 assert.equal(c.blockedDiscovery({area:'Unmapped area',title:'Another unit'}),true);
 console.log('PASS explicit viewing approval accepts only that saved location and preserves furnishing and Pass rules');
+
+// Comparing saved alternatives must expose criteria failures without promoting them.
+const preferred={id:'https://example.com/preferred',name:'Garden House · Agent One','Building name':'Garden House',Neighbourhood:'Bangsar',Furnishing:'Fully furnished','Build year filter':2023,'Size sqft':950,'Rent RM/month':4000,'Budget ceiling RM':4000,'Unit preference':'First choice'};
+const alternative={...preferred,id:'https://example.com/alternative',name:'Garden House · Agent Two','Rent RM/month':4500,'Unit preference':'Alternative'};
+store.condoCache={id,data:[alternative,preferred,{...preferred,id:'https://example.com/unrelated','Building name':'Elsewhere'}]};
+assert.deepEqual(Array.from(c.relatedUnits(alternative),x=>x.id),[preferred.id,alternative.id]);
+const comparison=c.unitComparison(alternative);
+assert.ok(comparison.indexOf('Agent One')<comparison.indexOf('Agent Two'));
+assert.match(comparison,/RM 500 more \/ month than first choice/);
+assert.match(comparison,/Excluded — over budget/);
+assert.doesNotMatch(comparison,/Elsewhere/);
+assert.equal(c.status(alternative),'Excluded — over budget or price unknown');
+console.log('PASS unit comparison preserves preference, exact price differences, building scope and budget exclusion');
