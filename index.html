@@ -171,6 +171,29 @@
   .xdel:hover{color:var(--terra)}
   .ptag{display:inline-flex;align-items:center;gap:5px;background:var(--paper2);border-radius:20px;padding:5px 12px;margin:0 7px 7px 0;font-size:13px;color:var(--ink2)}
   .ptag button{border:none;background:none;color:var(--muted);font-size:14px}
+  .hw-road{margin:0 0 24px;border:1px solid #5b315f;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#24152e,#17141f 64%,#251b12);box-shadow:0 18px 45px -26px #000}
+  .hw-hero{padding:20px;background:radial-gradient(circle at 88% 4%,rgba(240,183,78,.22),transparent 38%)}
+  .hw-kicker{font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;color:#d89b5c;font-weight:700}
+  .hw-title{margin:3px 0 4px;font-family:'Fraunces',serif;font-size:27px;color:#fff4e8}
+  .hw-copy{color:#b9afbd;font-size:12.5px}
+  .hw-progress{height:7px;background:#38283c;border-radius:20px;overflow:hidden;margin:15px 0 7px}
+  .hw-progress i{display:block;height:100%;background:linear-gradient(90deg,#9c52a6,#f0a33b);border-radius:20px}
+  .hw-now{margin-top:15px;padding:13px 14px;border:1px solid rgba(240,183,78,.25);border-radius:14px;background:rgba(255,255,255,.04)}
+  .hw-now-label,.hw-date{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:#bd8c65;font-weight:700}
+  .hw-pick{display:flex;gap:10px;align-items:center;padding:8px 0;color:#f3eaf2}
+  .hw-pick+.hw-pick{border-top:1px solid rgba(255,255,255,.07)}
+  .hw-check{width:44px;height:44px;flex:0 0 auto;border-radius:12px;border:1px solid #735778;background:transparent;color:#fff;display:grid;place-items:center;padding:0}
+  .hw-pick.done .hw-check{background:#9c52a6;border-color:#9c52a6}.hw-pick.done .hw-film{text-decoration:line-through;color:#8f8490}
+  .hw-film{font-size:14px;font-weight:600;line-height:1.25}.hw-meta{font-size:10.5px;color:#9e929f;margin-top:2px}
+  .hw-actions{display:flex;justify-content:space-between;align-items:center;gap:9px;margin-top:12px}
+  .hw-btn{border:1px solid #6c4b70;background:rgba(255,255,255,.04);color:#eaddeb;border-radius:10px;padding:8px 11px;font-size:11.5px;font-weight:700}
+  .hw-days{border-top:1px solid rgba(255,255,255,.08);padding:5px 20px 18px}
+  .hw-day{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07)}.hw-day:last-child{border-bottom:0}
+  .hw-day.today{margin:0 -10px;padding:13px 10px;background:rgba(240,163,59,.07);border-radius:12px}
+  .hw-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.hw-phase{font-size:10.5px;color:#8f8293}
+  .hw-christmas{padding:15px 20px 17px;border-top:1px solid rgba(255,255,255,.08);color:#bfc7db;background:rgba(35,52,76,.28);font-size:11.5px}
+  .hw-christmas b{display:block;color:#e8edf7;font-family:'Fraunces',serif;font-size:15px;margin-bottom:3px}
+  html[data-theme="light"] .hw-road{background:linear-gradient(145deg,#2b1834,#211925 64%,#312112)}
 
   /* ===== generic item ===== */
   .item{background:var(--card);border:1px solid var(--cardEdge);border-radius:14px;padding:14px 15px;margin-bottom:10px;box-shadow:var(--sh1)}
@@ -383,6 +406,8 @@
   <!-- MOVIES -->
   <section class="view" id="v-movies"><div class="pad">
     <div class="vhead"><h2>Movies &amp; Shows</h2><div class="sub">Drag to rank. Tag who it's for. ▷ pulls a recap.</div></div>
+    <div id="halloween-road"></div>
+    <div class="sectitle">Your shared watchlist</div>
     <div class="row" style="align-items:flex-start">
       <div class="ac-wrap">
         <input id="mv-input" placeholder="Add a film or show — type to search…" autocomplete="off">
@@ -602,6 +627,7 @@
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
+<script src="halloween.js?v=20260911-road"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1001,6 +1027,20 @@ function renderTiles(){
 
 /* ================= MOVIES ================= */
 let mvPick=null,mvTab='t';
+let hwOpen=false;
+function hwDone(){return DB.get('halloweenDone',{});}
+function hwToggle(id){const d=hwDone();d[id]=!d[id];DB.set('halloweenDone',d);hwRender();}
+function hwExpand(){hwOpen=!hwOpen;hwRender();}
+function hwPick(f,done){const watched=!!done[f.id],label=`Mark ${esc(f.title)} ${watched?'not watched':'watched'}`;return `<div class="hw-pick ${watched?'done':''}"><button class="hw-check" onclick="hwToggle('${f.id}')" aria-pressed="${watched}" aria-label="${label}">${watched?'✓':''}</button><div><div class="hw-film">${esc(f.title)}</div><div class="hw-meta">${f.year} · ${esc(f.kind)}</div></div></div>`;}
+function hwRender(){
+  const root=document.getElementById('halloween-road'),road=window.CF_HALLOWEEN;if(!root||!road)return;
+  const done=hwDone(),all=road.days.flatMap(d=>d.films),watched=all.filter(f=>done[f.id]).length;
+  const local=new Date(),today=[local.getFullYear(),String(local.getMonth()+1).padStart(2,'0'),String(local.getDate()).padStart(2,'0')].join('-');
+  const current=road.days.find(d=>d.date===today)||road.days.find(d=>d.date>today&&!d.films.every(f=>done[f.id]))||road.days.find(d=>!d.films.every(f=>done[f.id]))||road.days.at(-1);
+  const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  const days=hwOpen?`<div class="hw-days">${road.days.map(d=>`<div class="hw-day ${d.date===today?'today':''}"><div class="hw-day-head"><span class="hw-date">${dateLabel(d.date)}</span><span class="hw-phase">${'●'.repeat(d.intensity)} ${esc(d.phase)}</span></div>${d.films.map(f=>hwPick(f,done)).join('')}</div>`).join('')}</div>`:'';
+  root.innerHTML=`<div class="hw-road"><div class="hw-hero"><div class="hw-kicker">11 September → 31 October</div><div class="hw-title">Road to Halloween</div><div class="hw-copy">51 days · 66 films · one every weekday, double features every weekend. It gets darker as Halloween gets closer.</div><div class="hw-progress"><i style="width:${Math.round(watched/all.length*100)}%"></i></div><div class="hw-copy">${watched} of ${all.length} watched</div><div class="hw-now"><div class="hw-now-label">${current.date===today?'Tonight':today<road.start?'Opening night':today>road.end?'Last unwatched night':dateLabel(current.date)}</div>${current.films.map(f=>hwPick(f,done)).join('')}</div><div class="hw-actions"><span class="hw-copy">Four chapters, from Beetlejuice to Halloween.</span><button class="hw-btn" onclick="hwExpand()">${hwOpen?'Hide the road':'See all 51 days'}</button></div></div>${days}<div class="hw-christmas"><b>${esc(road.christmas.title)}</b>${road.christmas.order.map(esc).join(' → ')}</div></div>`;
+}
 const artInflight=new Set();
 function posterSrc(f){
   if(window.CF_POSTERS&&CF_POSTERS[f.t])return CF_POSTERS[f.t];
@@ -1091,6 +1131,7 @@ function mvRecap(t,k){window.open('https://www.youtube.com/results?search_query=
 function mvReorder(ids){const l=DB.get('movies',[]);ids.forEach((id,i)=>{const f=l.find(x=>x.id===id);if(f)f.order=i;});DB.set('movies',l);}
 function mvCount(code){return DB.get('movies',[]).filter(x=>code==='passed'?x.passed:code==='watched'?x.watched:(!x.passed&&!x.watched&&x.lane===code)).length;}
 function mvRender(){
+  hwRender();
   document.getElementById('mv-subtabs').innerHTML=[['t','Together'],['f','Fares'],['c','Charlotte'],['watched','Watched'],['passed','Passed']]
     .map(([k,l])=>`<button class="subtab ${mvTab===k?'on':''}" onclick="mvTab='${k}';mvRender()">${l}<span class="n">${mvCount(k)}</span></button>`).join('');
   const box=document.getElementById('mv-list');
