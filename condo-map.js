@@ -1,6 +1,30 @@
 /* Locations and opinions come from the private comparison, never from bundled data. */
 window.CondoMap=(()=>{
-  let map=null,view=null,signature='',selected='',groups=[],markers=new Map(),options={},host=null;
+  let map=null,view=null,signature='',selected='',groups=[],markers=new Map(),options={},host=null,killLayer=null,killsOn=true,killCard=null;
+  // Additive kill overlay. Areas we ruled out (red zones) and buildings we killed
+  // (red ✕), each with the reason. Curated from the private search log, never bundled data.
+  const KILLS={
+    areas:[
+      {name:'Mont Kiara',point:[3.1660,101.6510],r:1100,why:'Area ruled out. Solaris Parq is here and it was cut, so the Mont Kiara core is off the search.'},
+      {name:'Desa ParkCity',point:[3.1875,101.6300],r:900,why:'Cut on commute distance. Too far from the daily work commute.'},
+      {name:'Cheras',point:[3.1000,101.7300],r:1600,why:'Wrong side of town for the west-Damansara corridor. Velocity TWO and One Cochrane both sit here.'},
+      {name:'Ampang',point:[3.1500,101.7550],r:1400,why:'Off-corridor, wrong direction for the commute. The Ridge @ KL East is here.'},
+      {name:'KL Sentral',point:[3.1330,101.6860],r:700,why:'Ruled out with Sentral Suites; the building was not a fit.'},
+      {name:'Tropicana / Kota Damansara',point:[3.1520,101.5950],r:1300,why:'Feels too far out, and Cyperus/Edelweiss are ~2018, failing the 2022 rule.'},
+      {name:'Damansara Heights (new-build)',point:[3.1555,101.6640],r:700,why:'Over budget. New-build 2-beds here run RM6,000–12,000, well above the ceiling.'},
+    ],
+    buildings:[
+      {name:'Senada Residence',point:[3.1547,101.6329],why:'Provisional cut on maintenance. Central and green, but the residential block is poorly kept.'},
+      {name:'Goodwood Residence',point:[3.1120,101.6650],why:'Cut on traffic and price. Jammed access, and no 2-bed in the target band.'},
+      {name:'Sunway Velocity TWO',point:[3.1290,101.7170],why:'Wrong area (Cheras), beside the hospital. Already viewed; out.'},
+      {name:'Sentral Suites',point:[3.1315,101.6870],why:'The building was not a fit.'},
+      {name:'One Cochrane',point:[3.1290,101.7220],why:'Cut earlier; it is in Cheras, off-corridor.'},
+      {name:'Nadi Bangsar',point:[3.1285,101.6790],why:'Run down; not comparable to the shortlist.'},
+      {name:'Gaya Bangsar',point:[3.1345,101.6725],why:'Predates 2022; fails the completion-year rule.'},
+      {name:'The Atwater',point:[3.1077,101.6383],why:'Only 703 sqft / 2-bed 1-bath; below the 800 sqft minimum.'},
+      {name:'Solaris Parq',point:[3.1730,101.6650],why:'In Mont Kiara, which is now out. Cut with the area.'},
+    ],
+  };
   const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safe=v=>{try{const u=new URL(v);return u.protocol==='https:'?u.href:'';}catch{return '';}};
   const money=v=>`RM ${Number(v).toLocaleString('en-MY')}`;
@@ -27,7 +51,32 @@ window.CondoMap=(()=>{
   }
   function kind(g){return g.entries.some(x=>x.st==='❤️ Both shortlist')?'shortlisted':g.entries.every(x=>x.st.startsWith('Excluded'))?'excluded':'available';}
   function price(g){const prices=g.entries.map(x=>Number(x.o['Rent RM/month'])).filter(Number.isFinite);const lo=Math.min(...prices),hi=Math.max(...prices);return lo===hi?money(lo):`${money(lo)}–${hi.toLocaleString('en-MY')}`;}
-  function destroy(){if(map){view={center:map.getCenter(),zoom:map.getZoom()};map.remove();map=null;}markers.clear();}
+  function destroy(){if(map){view={center:map.getCenter(),zoom:map.getZoom()};map.remove();map=null;}markers.clear();killLayer=null;killCard=null;}
+  function killCardEl(){
+    if(killCard&&host&&host.contains(killCard))return killCard;
+    const wrap=host?.querySelector('.cm-map-wrap');if(!wrap)return null;
+    killCard=document.createElement('div');killCard.className='cm-kill-card';killCard.hidden=true;wrap.appendChild(killCard);return killCard;
+  }
+  function showKill(item,type){
+    const el=killCardEl();if(!el)return;
+    el.innerHTML=`<button class="cm-kill-close" aria-label="Close">✕</button><span class="cm-kill-tag">${type==='area'?'Killed area':'Killed building'}</span><h4>${e(item.name)}</h4><p>${e(item.why)}</p>`;
+    el.hidden=false;el.querySelector('.cm-kill-close').onclick=()=>{el.hidden=true;};
+  }
+  function drawKills(){
+    if(!map)return;
+    if(killLayer){map.removeLayer(killLayer);killLayer=null;}
+    if(!killsOn)return;
+    killLayer=L.layerGroup();
+    KILLS.areas.forEach(a=>{
+      L.circle(a.point,{radius:a.r,color:'#b3261e',weight:1.5,fillColor:'#b3261e',fillOpacity:.13}).on('click',()=>showKill(a,'area')).addTo(killLayer);
+      L.marker(a.point,{icon:L.divIcon({className:'cm-kill-zone',html:`<span>${e(a.name)}</span>`,iconSize:null,iconAnchor:[0,0]}),keyboard:true,title:`Killed area: ${a.name}`}).on('click',()=>showKill(a,'area')).addTo(killLayer);
+    });
+    KILLS.buildings.forEach(b=>{
+      const m=L.marker(b.point,{icon:L.divIcon({className:'cm-pin cm-kill',html:'<span>✕</span>',iconSize:null,iconAnchor:[15,15]}),keyboard:true,title:`Killed: ${b.name} — ${b.why}`}).on('click',()=>showKill(b,'building')).addTo(killLayer);
+      m.getElement()?.setAttribute('aria-label',`Killed building: ${b.name}`);
+    });
+    killLayer.addTo(map);
+  }
   function choose(key){
     selected=key;const g=groups.find(x=>x.key===key);
     markers.forEach((m,k)=>{const el=m.getElement();el?.classList.toggle('is-selected',k===key);if(el)el.setAttribute('aria-pressed',String(k===key));m.setZIndexOffset(k===key?1000:0);});
@@ -55,8 +104,10 @@ window.CondoMap=(()=>{
     if(!groups.some(g=>g.key===selected))selected='';
     const nextSignature=groups.map(g=>g.key).sort().join('|')+':'+Math.round(node.getBoundingClientRect().width)+':'+innerWidth,keepView=signature===nextSignature&&view;signature=nextSignature;
     const n=groups.reduce((sum,g)=>sum+g.entries.length,0);
-    host.innerHTML=`<section class="cm-shell" aria-label="Your property map"><div class="cm-bar"><div><strong>${groups.length} condo${groups.length===1?'':'s'} · ${n} listing${n===1?'':'s'} on map</strong><p>Tap a price for its units. Nearby condos group together; tap the count to zoom in.</p></div><button class="btn" data-fit ${groups.length?'':'disabled'}>Show all pins</button></div><div class="cm-legend"><span><i class="available"></i>In criteria</span><span><i class="shortlisted"></i>Both shortlist</span><span><i class="excluded"></i>Excluded</span></div>${groups.length?'<div class="cm-layout"><div class="cm-map-wrap"><div id="condo-map" class="cm-map" aria-label="Map of saved condos"></div><p class="cm-tile-error" role="status" hidden>Map tiles could not load. Pins and listing details remain available; try refreshing.</p></div><div class="cm-results" aria-label="Mapped property listings"></div></div>':`<p class="ch-empty">${entries.length?'No confirmed map pins for these listings yet.':'No listings match this filter. Use Needs checking or Archive above to see other saved condos.'}</p>`}${result.missing.length?`<div class="cm-missing"><h3>${result.missing.length} listing${result.missing.length===1?'':'s'} awaiting a map pin</h3><p>These stay in your comparison until their location is confirmed.</p>${result.missing.map(x=>`<p>${e(x.o.name)} · <a href="${e(safe(x.o['Exact address / Maps'])||safe(x.o.id))}" target="_blank" rel="noopener noreferrer">Look up location ↗</a></p>`).join('')}</div>`:''}<p class="ch-sync">Pins show condo locations, not individual units or a confirmed entrance.</p></section>`;
+    host.innerHTML=`<section class="cm-shell" aria-label="Your property map"><div class="cm-bar"><div><strong>${groups.length} condo${groups.length===1?'':'s'} · ${n} listing${n===1?'':'s'} on map</strong><p>Tap a price for its units. Nearby condos group together; tap the count to zoom in.</p></div><div class="cm-bar-actions"><button class="btn" data-kills aria-pressed="${killsOn}">${killsOn?'Hide kills':'Show kills'}</button><button class="btn" data-fit ${groups.length?'':'disabled'}>Show all pins</button></div></div><div class="cm-legend"><span><i class="available"></i>In criteria</span><span><i class="shortlisted"></i>Both shortlist</span><span><i class="excluded"></i>Excluded</span><span><i class="killed-area"></i>Killed area</span><span><i class="killed-building"></i>Killed building ✕</span></div>${groups.length?'<div class="cm-layout"><div class="cm-map-wrap"><div id="condo-map" class="cm-map" aria-label="Map of saved condos"></div><p class="cm-tile-error" role="status" hidden>Map tiles could not load. Pins and listing details remain available; try refreshing.</p></div><div class="cm-results" aria-label="Mapped property listings"></div></div>':`<p class="ch-empty">${entries.length?'No confirmed map pins for these listings yet.':'No listings match this filter. Use Needs checking or Archive above to see other saved condos.'}</p>`}${result.missing.length?`<div class="cm-missing"><h3>${result.missing.length} listing${result.missing.length===1?'':'s'} awaiting a map pin</h3><p>These stay in your comparison until their location is confirmed.</p>${result.missing.map(x=>`<p>${e(x.o.name)} · <a href="${e(safe(x.o['Exact address / Maps'])||safe(x.o.id))}" target="_blank" rel="noopener noreferrer">Look up location ↗</a></p>`).join('')}</div>`:''}<p class="ch-sync">Pins show condo locations, not individual units or a confirmed entrance.</p></section>`;
     host.querySelector('[data-fit]').onclick=()=>{choose('');fit();};
+    const killBtn=host.querySelector('[data-kills]');
+    if(killBtn)killBtn.onclick=()=>{killsOn=!killsOn;killBtn.textContent=killsOn?'Hide kills':'Show kills';killBtn.setAttribute('aria-pressed',String(killsOn));if(killCard)killCard.hidden=true;drawKills();};
     if(!groups.length)return;
     renderList();
     if(typeof L==='undefined'){host.querySelector('.cm-map').innerHTML='<p class="ch-empty">The map needs an internet connection. Your listing details are available alongside it.</p>';return;}
@@ -88,6 +139,7 @@ window.CondoMap=(()=>{
     map.on('resize',fit);
     if(keepView)map.setView(view.center,view.zoom,{animate:false});else fit();
     drawPins();
+    drawKills();
   }
   return {render,destroy,coordinates,group};
 })();

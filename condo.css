@@ -52,3 +52,18 @@ html:not([data-theme=light]) #v-homes .cm-building-heading button:hover{color:#a
 @media(max-width:700px){.ch-unit-grid{grid-template-columns:minmax(0,1fr)}.ch-unit-body{padding:20px}.ch-unit-photo{height:180px}.ch-units-heading h2{font-size:32px}}
 
 .ch-unit-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 24px}.ch-unit-summary a{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--ch-line);border-radius:8px;text-decoration:none;background:var(--ch-soft);min-width:0}.ch-unit-summary span,.ch-unit-summary small{font-size:12px;color:var(--ch-muted);line-height:1.5}.ch-unit-summary strong{font-size:20px;font-variant-numeric:tabular-nums;color:var(--ch-ink)}.ch-unit-summary a:hover{border-color:var(--ch-ink)}.ch-unit-summary a:active{filter:brightness(.94)}.ch-unit{scroll-margin-top:125px}.ch-unit:focus{outline:3px solid #9d661e;outline-offset:3px}
+/* Kill overlay: ruled-out areas (red zones) and killed buildings (red ✕) */
+.cm-bar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cm-legend i.killed-area{background:#b3261e;opacity:.55;border-radius:2px}
+.cm-legend i.killed-building{background:#b3261e;border-radius:2px}
+.cm-pin.cm-kill{width:30px!important;height:30px!important}
+.cm-pin.cm-kill>span{display:flex;align-items:center;justify-content:center;width:30px;height:30px;min-height:30px;padding:0;background:#b3261e;color:#fff;border:2px solid #fffef9;border-radius:50%;font:700 15px Arial,sans-serif;box-shadow:0 2px 7px #263e3340}
+.cm-pin.cm-kill:hover>span{box-shadow:0 3px 10px #263e3370}
+.cm-kill-zone{width:max-content!important;height:auto!important;background:transparent;border:0}
+.cm-kill-zone>span{display:inline-block;transform:translate(-50%,-50%);background:rgba(179,38,30,.92);color:#fff;font:600 11px Arial,sans-serif;padding:3px 8px;border-radius:5px;white-space:nowrap;box-shadow:0 1px 5px #263e3340;cursor:pointer}
+.cm-kill-card{position:absolute;left:12px;right:12px;bottom:12px;z-index:2;max-width:440px;background:#fffef9;border:1px solid #e3b7b3;border-left:4px solid #b3261e;border-radius:10px;padding:14px 16px;box-shadow:0 4px 16px #263e3330}
+.cm-kill-card h4{margin:6px 0;font-size:16px}
+.cm-kill-card p{margin:0;font-size:14px;line-height:1.5;color:var(--ch-ink)}
+.cm-kill-tag{display:inline-block;font:600 11px Arial,sans-serif;color:#b3261e;text-transform:uppercase;letter-spacing:.04em}
+.cm-kill-close{position:absolute;top:8px;right:8px;border:0;background:none;color:#686f68;font-size:15px;cursor:pointer;min-width:34px;min-height:34px;border-radius:6px}
+.cm-kill-close:hover{background:#f0e6e5}
