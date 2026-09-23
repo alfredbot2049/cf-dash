@@ -10,8 +10,7 @@ window.CondoMap=(()=>{
       {name:'Cheras',point:[3.1000,101.7300],r:1600,why:'Wrong side of town for the west-Damansara corridor. Velocity TWO and One Cochrane both sit here.'},
       {name:'Ampang',point:[3.1500,101.7550],r:1400,why:'Off-corridor, wrong direction for the commute. The Ridge @ KL East is here.'},
       {name:'KL Sentral',point:[3.1330,101.6860],r:700,why:'Ruled out with Sentral Suites; the building was not a fit.'},
-      {name:'Tropicana / Kota Damansara',point:[3.1520,101.5950],r:1300,why:'Feels too far out, and Cyperus/Edelweiss are ~2018, failing the 2022 rule.'},
-      {name:'Damansara Heights (new-build)',point:[3.1555,101.6640],r:700,why:'Over budget. New-build 2-beds here run RM6,000–12,000, well above the ceiling.'},
+      {name:'KL city centre',point:[3.1500,101.7100],r:1650,why:'Central KL is off the search. The band running into the city centre is ruled out; Sunway Velocity TWO sits inside it.'},
     ],
     buildings:[
       {name:'Senada Residence',point:[3.1547,101.6329],why:'Provisional cut on maintenance. Central and green, but the residential block is poorly kept.'},
@@ -23,8 +22,15 @@ window.CondoMap=(()=>{
       {name:'Gaya Bangsar',point:[3.1345,101.6725],why:'Predates 2022; fails the completion-year rule.'},
       {name:'The Atwater',point:[3.1077,101.6383],why:'Only 703 sqft / 2-bed 1-bath; below the 800 sqft minimum.'},
       {name:'Solaris Parq',point:[3.1730,101.6650],why:'In Mont Kiara, which is now out. Cut with the area.'},
+      {name:'Edelweiss @ Tropicana Gardens',point:[3.1509,101.5946],why:'Predates 2022; fails the completion-year rule. The Kota Damansara area itself stays open.'},
+      {name:'Pavilion Damansara Heights',point:[3.1563,101.6640],why:'Over budget. New-build 2-beds here run well above the ceiling. Only this building is out, not the Damansara area.'},
     ],
   };
+  // Killed buildings never show as an active price pill. The red ✕ overlay is the
+  // only trace they leave on the map, so drop their listings before grouping.
+  const norm=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const killedKeys=KILLS.buildings.map(b=>norm(b.name.split('@')[0])).filter(k=>k.length>4);
+  function isKilled(o){const n=norm(String(o.name||'').split(' · ')[0]);return n.length>4&&killedKeys.some(k=>n.includes(k)||k.includes(n));}
   const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safe=v=>{try{const u=new URL(v);return u.protocol==='https:'?u.href:'';}catch{return '';}};
   const money=v=>`RM ${Number(v).toLocaleString('en-MY')}`;
@@ -100,6 +106,7 @@ window.CondoMap=(()=>{
   function fit(){if(map&&groups.length)map.fitBounds(groups.map(g=>g.point),{padding:[55,55],maxZoom:15,animate:false});}
   function render(node,entries,callbacks){
     destroy();host=node;options=callbacks;
+    entries=entries.filter(x=>!isKilled(x.o));
     const result=group(entries);groups=result.groups;
     if(!groups.some(g=>g.key===selected))selected='';
     const nextSignature=groups.map(g=>g.key).sort().join('|')+':'+Math.round(node.getBoundingClientRect().width)+':'+innerWidth,keepView=signature===nextSignature&&view;signature=nextSignature;

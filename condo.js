@@ -49,8 +49,11 @@ window.CondoHunting=(()=>{
     if(/\b(bangsar|kerinchi|pantai|taman desa|seputeh|brickfields|kl sentral|kelana jaya|sungai way|seri setia)\b|\bss\s*2\b/i.test(area))return 'inside';
     return 'unconfirmed';
   }
+  const DISCOVERY_BLOCKLIST=['skyvogue'];
   function blockedDiscovery(l){
     if(areaDecision(l)!=='inside')return true;
+    const nm=String(l.building||l.title||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(DISCOVERY_BLOCKLIST.some(b=>nm.includes(b)))return true;
     const text=String([l.title,l.desc].join(' ')).toLowerCase().replace(/[^a-z0-9]/g,'');
     const items=data.length?data:(DB.get('condoCache',{})?.data||[]);
     const keys=[...items.filter(o=>{const v=votes(o);return isPass(v.F)||isPass(v.C)||isPass(o['Building decision']);}).map(building),...Object.values(historyItems()).map(h=>h.building)];

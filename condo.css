@@ -61,9 +61,9 @@ html:not([data-theme=light]) #v-homes .cm-building-heading button:hover{color:#a
 .cm-pin.cm-kill:hover>span{box-shadow:0 3px 10px #263e3370}
 .cm-kill-zone{width:max-content!important;height:auto!important;background:transparent;border:0}
 .cm-kill-zone>span{display:inline-block;transform:translate(-50%,-50%);background:rgba(179,38,30,.92);color:#fff;font:600 11px Arial,sans-serif;padding:3px 8px;border-radius:5px;white-space:nowrap;box-shadow:0 1px 5px #263e3340;cursor:pointer}
-.cm-kill-card{position:absolute;left:12px;right:12px;bottom:12px;z-index:2;max-width:440px;background:#fffef9;border:1px solid #e3b7b3;border-left:4px solid #b3261e;border-radius:10px;padding:14px 16px;box-shadow:0 4px 16px #263e3330}
-.cm-kill-card h4{margin:6px 0;font-size:16px}
-.cm-kill-card p{margin:0;font-size:14px;line-height:1.5;color:var(--ch-ink)}
+.cm-kill-card{position:absolute;left:12px;right:12px;bottom:12px;z-index:2;max-width:440px;background:#fffef9;border:1px solid #e3b7b3;border-left:4px solid #b3261e;border-radius:10px;padding:14px 16px;box-shadow:0 4px 16px #263e3330;color:#1c2b22}
+.cm-kill-card h4{margin:6px 0;font-size:16px;color:#1c2b22}
+.cm-kill-card p{margin:0;font-size:14px;line-height:1.5;color:#1c2b22}
 .cm-kill-tag{display:inline-block;font:600 11px Arial,sans-serif;color:#b3261e;text-transform:uppercase;letter-spacing:.04em}
 .cm-kill-close{position:absolute;top:8px;right:8px;border:0;background:none;color:#686f68;font-size:15px;cursor:pointer;min-width:34px;min-height:34px;border-radius:6px}
 .cm-kill-close:hover{background:#f0e6e5}
