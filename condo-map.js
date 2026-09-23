@@ -24,7 +24,6 @@ window.CondoMap=(()=>{
       {name:'Solaris Parq',point:[3.1730,101.6650],why:'In Mont Kiara, which is now out. Cut with the area.'},
       {name:'Edelweiss @ Tropicana Gardens',point:[3.1509,101.5946],why:'Cut on unit layout and cheap fixtures. The floor plans do not work and the building finishes are low quality. The Kota Damansara area itself stays open.'},
       {name:'Pavilion Damansara Heights',point:[3.1563,101.6640],why:'Over budget. New-build 2-beds here run well above the ceiling. Only this building is out, not the Damansara area.'},
-      {name:'SkyVogue',point:[3.1058,101.6875],why:'Ruled out of the active search. Kept here on the killed list to remember it; exact reason to confirm.'},
     ],
   };
   // Killed buildings never show as an active price pill. The red ✕ overlay is the
