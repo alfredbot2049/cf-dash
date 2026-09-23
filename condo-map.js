@@ -22,7 +22,7 @@ window.CondoMap=(()=>{
       {name:'Gaya Bangsar',point:[3.1345,101.6725],why:'Predates 2022; fails the completion-year rule.'},
       {name:'The Atwater',point:[3.1077,101.6383],why:'Only 703 sqft / 2-bed 1-bath; below the 800 sqft minimum.'},
       {name:'Solaris Parq',point:[3.1730,101.6650],why:'In Mont Kiara, which is now out. Cut with the area.'},
-      {name:'Edelweiss @ Tropicana Gardens',point:[3.1509,101.5946],why:'Predates 2022; fails the completion-year rule. The Kota Damansara area itself stays open.'},
+      {name:'Edelweiss @ Tropicana Gardens',point:[3.1509,101.5946],why:'Cut on unit layout and cheap fixtures. The floor plans do not work and the building finishes are low quality. The Kota Damansara area itself stays open.'},
       {name:'Pavilion Damansara Heights',point:[3.1563,101.6640],why:'Over budget. New-build 2-beds here run well above the ceiling. Only this building is out, not the Damansara area.'},
     ],
   };
