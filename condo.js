@@ -77,6 +77,13 @@ window.CondoHunting=(()=>{
   const brief=(s,n=170)=>{s=String(s||'');return s.length>n?s.slice(0,s.lastIndexOf(' ',n))+'…':s;};
   const link=(v,label)=>url(v)?`<a href="${e(url(v))}" target="_blank" rel="noopener noreferrer">${e(label)}</a>`:'';
   const field=(o,key)=>o[key]?`<div class="ch-field"><h4>${e(key)}</h4><p>${e(o[key])}</p></div>`:'';
+  function killedList(){
+    const k=window.CondoMap?.kills;
+    if(!k||!(k.buildings||[]).length&&!(k.areas||[]).length)return '<div class="ch-empty"><h3>Nothing killed yet</h3><p>Buildings and areas you rule out show up here with the reason, so you can remember why.</p></div>';
+    const row=x=>`<li><strong>${e(x.name)}</strong><span>${e(x.why)}</span></li>`;
+    const b=(k.buildings||[]).map(row).join(''),a=(k.areas||[]).map(row).join('');
+    return `<div class="ch-killed"><p class="ch-sync">Buildings and areas ruled out, kept so you can see why. They no longer appear in the review tabs or as price pins, and they show on the map as red ✕ marks and zones.</p>${b?`<h3>Killed buildings</h3><ul class="ch-killed-list">${b}</ul>`:''}${a?`<h3>Killed areas</h3><ul class="ch-killed-list">${a}</ul>`:''}</div>`;
+  }
   function render(){const root=document.getElementById('condo-root');if(!root)return;window.CondoMap?.destroy();const legacy=document.getElementById('hm-legacy');legacy.hidden=mode!=='explore';root.hidden=mode==='explore';document.querySelectorAll('[data-condo-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.condoMode===mode));if(mode==='explore'){hmLegacyRender();return;}
     const id=sourceId();if(loaded!==id&&!busy){const cache=DB.get('condoCache',null);data=cache?.id===id?cache.data:[];loaded=id;if(id){refresh();return;}}
     if(discovery){root.innerHTML=research(discovery);return;}
@@ -84,10 +91,14 @@ window.CondoHunting=(()=>{
     if(!id){root.innerHTML=`<div class="ch-connect"><h3>Your shared comparison</h3><p>Open the private condo link shared in your chat to load the comparison automatically on this device. The connection syncs to your other signed-in devices. You can also paste the sheet link below.</p><label for="condo-connect">Google Sheet link</label><input id="condo-connect" type="url" placeholder="Paste the sheet link"><button class="btn primary" onclick="CondoHunting.connect()">Connect comparison</button><p role="status">${e(error)}</p></div>`;return;}
     remember();
     Object.values(historyItems()).forEach(h=>{if(!data.some(o=>o.id===h.o.id))data.push(h.o);});
-    const items=data.map((o,index)=>({o,index,v:votes(o),st:status(o)}));
-    const count=k=>items.filter(x=>k==='archive'?x.st.startsWith('Archived'):k==='checking'?/^(Needs|Excluded)/.test(x.st):k==='shortlist'?x.st==='❤️ Both shortlist':!/^(Archived|Excluded|Needs)/.test(x.st)).length;
-    const toolbar=`<div class="ch-toolbar"><div><strong>${count('active')} ready to review</strong><p>Fully furnished · completed 2022+ · your PJ–Bangsar corridor. Either person’s Pass archives the condo.</p></div><button class="btn" onclick="CondoHunting.refresh()" ${busy?'disabled':''}>${busy?'Refreshing…':'Refresh'}</button></div><div class="ch-filter" aria-label="Review stages">${[['active','To review'],['shortlist','Shortlist'],['checking','Needs checking'],['archive','Archive']].map(([k,n])=>`<button aria-pressed="${filter===k}" onclick="CondoHunting.filter('${k}')">${n} <span>${count(k)}</span></button>`).join('')}</div>${error?`<p class="ch-error" role="alert">${e(error)} Saved details are shown.</p>`:''}`;
+    // Killed buildings live only on the map's red-✕ overlay and the Killed list.
+    // Drop them from every review tab and from the price pins, keeping the kill record.
+    const items=data.map((o,index)=>({o,index,v:votes(o),st:status(o)})).filter(x=>!window.CondoMap?.isKilled?.(x.o));
+    const killedCount=(window.CondoMap?.kills?.buildings?.length||0)+(window.CondoMap?.kills?.areas?.length||0);
+    const count=k=>k==='killed'?killedCount:items.filter(x=>k==='archive'?x.st.startsWith('Archived'):k==='checking'?/^(Needs|Excluded)/.test(x.st):k==='shortlist'?x.st==='❤️ Both shortlist':!/^(Archived|Excluded|Needs)/.test(x.st)).length;
+    const toolbar=`<div class="ch-toolbar"><div><strong>${count('active')} ready to review</strong><p>Fully furnished · completed 2022+ · your PJ–Bangsar corridor. Either person’s Pass archives the condo.</p></div><button class="btn" onclick="CondoHunting.refresh()" ${busy?'disabled':''}>${busy?'Refreshing…':'Refresh'}</button></div><div class="ch-filter" aria-label="Review stages">${[['active','To review'],['shortlist','Shortlist'],['checking','Needs checking'],['archive','Archive'],['killed','Killed']].map(([k,n])=>`<button aria-pressed="${filter===k}" onclick="CondoHunting.filter('${k}')">${n} <span>${count(k)}</span></button>`).join('')}</div>${error?`<p class="ch-error" role="alert">${e(error)} Saved details are shown.</p>`:''}`;
     if(busy&&!data.length){root.innerHTML=toolbar+'<p class="ch-empty" role="status">Loading properties from your sheet…</p>';return;}
+    if(filter==='killed'){root.innerHTML=toolbar+killedList();return;}
     const entries=items.filter(x=>matches(x.st)).sort((a,b)=>preferenceRank(a.o)-preferenceRank(b.o));
     if(mode==='map'){root.innerHTML=toolbar+'<div id="condo-map-root"></div>';CondoMap.render(document.getElementById('condo-map-root'),entries,{vote,verdicts,details:index=>{detailBack='map';mode='comparison';detail=index;discovery=null;render();document.getElementById('ch-detail')?.scrollIntoView({block:'start'});}});return;}
     if(detail!==null&&data[detail]){root.innerHTML=research(data[detail],detail);document.getElementById('ch-back').focus();return;}
