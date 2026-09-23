@@ -1,6 +1,6 @@
 /* Private comparison is loaded from the couple's configured sheet, never bundled. */
 window.CondoHunting=(()=>{
-  let data=[],loaded='',busy=false,error='',mode='comparison',filter='active',linkedSource='',detail=null,detailBack='comparison',discovery=null,pendingRefresh=false,comparisonIndex=null;
+  let data=[],loaded='',busy=false,error='',mode='map',filter='active',linkedSource='',detail=null,detailBack='map',discovery=null,pendingRefresh=false,comparisonIndex=null;
   const verdicts=['🤔 Not decided','👍 I like this one','❤️ Shortlist','💭 Maybe','👎 Pass'];
   const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url=v=>{try{const u=new URL(v);return u.protocol==='https:'?u.href:'';}catch{return '';}};
