@@ -48,12 +48,13 @@ assert.notEqual(replacement.title,original.title);
 assert.ok(state.seen[road.filmKey(original)]);
 assert.notEqual(replacement.id,original.id);
 assert.equal(resolved[0].films[0].id,road.days[0].films[0].id);
+const firstReplacement=replacement.title;
 state=road.replaceSeen(JSON.parse(JSON.stringify(state)),replacement.id);
 replacement=road.resolveDays(state).find(d=>d.date==='2026-10-10').films[0];
 assert.equal(Object.keys(state.seen).length,2);
-assert.equal(Object.keys(state.replacements).length,1);
+assert.ok(Object.keys(state.replacements).length>=1);
 assert.equal(new Set(road.resolveDays(state).flatMap(d=>d.films.map(road.filmKey))).size,66);
-assert.equal(road.resolveDays(state.undo).find(d=>d.date==='2026-10-10').films[0].title,road.reserve[0].title);
+assert.equal(road.resolveDays(state.undo).find(d=>d.date==='2026-10-10').films[0].title,firstReplacement);
 for(let i=2;i<road.reserve.length;i++){
  state=road.replaceSeen(state,replacement.id);
  replacement=road.resolveDays(state).find(d=>d.date==='2026-10-10').films[0];
@@ -65,3 +66,10 @@ assert.equal(road.resolveDays(state).find(d=>d.date==='2026-10-10').films[0].id,
 assert.match(html,/DB.set\('halloweenSeen'/);
 assert.match(html,/Undo last already seen/);
 console.log('PASS seen replacements, reload, no repeats, stable history, undo and honest pool exhaustion');
+const allFuture=road.days.filter(d=>d.date>='2026-10-10').flatMap(d=>d.films);
+const doneFuture=Object.fromEntries(allFuture.slice(2).map(f=>[f.id,true]));
+const kept=road.replaceSeen({},original.id,doneFuture);
+for(const film of allFuture.slice(2))assert.ok(road.resolveDays(kept).flatMap(d=>d.films).some(f=>f.id===film.id),'preserve completed '+film.title);
+const firstSwap=road.replaceSeen({},original.id);
+const firstPick=road.resolveDays(firstSwap).find(d=>d.date==='2026-10-10').films[0];
+assert.ok(road.availability[firstPick.movieWiserId]?.offers.length,'replacement prioritises Malaysia availability');

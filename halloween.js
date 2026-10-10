@@ -125,14 +125,25 @@
   function resolveDays(state={}) {
     return days.map(day=>({...day,films:day.films.map(f=>state.replacements?.[f.id]||f)}));
   }
-  function replaceSeen(state, slotId) {
+  function replaceSeen(state, slotId, done={}) {
     const resolved=resolveDays(state),film=resolved.flatMap(d=>d.films).find(f=>f.id===slotId);
     if(!film)return state;
     const seen={...state.seen,[filmKey(film)]:true};
     const replacements={...state.replacements};
     const used=new Set([...days.flatMap(d=>d.films),...Object.values(replacements)].map(filmKey));
     const excluded=new Set(['Alien','Aliens','Prometheus','The Mummy','The Burrowers',"Widow’s Bay"].map(t=>t.toLowerCase()));
-    const candidate=replacementsPool.find(f=>!used.has(filmKey(f))&&!seen[filmKey(f)]&&!excluded.has(f.title.toLowerCase()));
+    const fallback=replacementsPool.find(f=>!used.has(filmKey(f))&&!seen[filmKey(f)]&&!excluded.has(f.title.toLowerCase()));
+    let candidate=fallback;
+    const targetDay=resolved.find(d=>d.films.some(f=>f.id===slotId));
+    // Pull a verified later pick forward before offering an unconfirmed backup.
+    const later=fallback&&resolved.filter(d=>d.date>targetDay.date).flatMap(d=>d.films)
+      .filter(f=>!done[f.id]&&!seen[filmKey(f)]&&priority(f)>priority(fallback))
+      .sort((a,b)=>priority(b)-priority(a))[0];
+    if(later){
+      const source=days.flatMap(d=>d.films).find(f=>f.id===later.id||replacements[f.id]?.id===later.id);
+      replacements[source.id]={...fallback,id:source.id+'-r-'+fallback.movieWiserId};
+      candidate=later;
+    }
     // Keep the original slot as the stable map key, even after several replacements.
     const original=days.flatMap(d=>d.films).find(f=>f.id===slotId||replacements[f.id]?.id===slotId);
     if(candidate&&original)replacements[original.id]={...candidate,id:original.id+'-r-'+candidate.movieWiserId};

@@ -1031,7 +1031,7 @@ function renderTiles(){
 let mvPick=null,mvTab='t';
 let hwOpen=false;
 function hwSeenState(){return DB.get('halloweenSeen',{});}
-function hwAlreadySeen(id){DB.set('halloweenSeen',CF_HALLOWEEN.replaceSeen(hwSeenState(),id));hwRender();}
+function hwAlreadySeen(id){DB.set('halloweenSeen',CF_HALLOWEEN.replaceSeen(hwSeenState(),id,hwDone()));hwRender();}
 function hwUndoSeen(){const state=hwSeenState();if(state.undo)DB.set('halloweenSeen',state.undo);hwRender();}
 function hwDone(){return DB.get('halloweenDone',{});}
 function hwToggle(id){const d=hwDone();d[id]=!d[id];DB.set('halloweenDone',d);hwRender();}
