@@ -54,8 +54,24 @@
     cursor+=count;
   }
 
+  // Revised from 10 October only: preserve historical slots and saved checks.
+  const remaining = [["The Prestige", 2006, "Twisty mystery", 1124, 8], ["Arrival", 2016, "First-contact mystery", 329865, 7.4], ["The Illusionist", 2006, "Period mystery", 1491, 7], ["Contact", 1997, "Cosmic mystery", 686, 7.2], ["The Truman Show", 1998, "Uncanny mystery", 37165, null], ["Moon", 2009, "Space mystery", 17431, null], ["Source Code", 2011, "Sci-fi puzzle", 45612, null], ["Dark City", 1998, "Noir sci-fi", 2666, null], ["The Game", 1997, "Conspiracy mystery", 2649, null], ["The Abyss", 1989, "Undersea mystery", 2756, null], ["Close Encounters of the Third Kind", 1977, "Alien mystery", 840, null], ["Gattaca", 1997, "Sci-fi mystery", 782, null], ["Frequency", 2000, "Time-bending mystery", 10559, null], ["The Secret of NIMH", 1982, "Eerie animated adventure", 11704, null], ["Wallace & Gromit: The Curse of the Were-Rabbit", 2005, "Cozy creature mystery", 533, null], ["Stardust", 2007, "Magical adventure", 2270, null], ["Harry Potter and the Prisoner of Azkaban", 2004, "Magical mystery", 673, null], ["Harry Potter and the Goblet of Fire", 2005, "Magical mystery", 674, null], ["Sherlock Holmes", 2009, "Gothic detective adventure", 10528, null], ["Knives Out", 2019, "Whodunit", 546554, null], ["Clue", 1985, "Mansion mystery comedy", 15196, null], ["Who Framed Roger Rabbit", 1988, "Noir mystery adventure", 856, null], ["The Adventures of Tintin", 2011, "Treasure mystery", 17578, null], ["The Lady Vanishes", 1938, "Train mystery", 940, null], ["Rebecca", 1940, "Gothic mystery", 223, null], ["The Ghost and Mrs. Muir", 1947, "Gentle ghost story", 22292, null], ["The Hound of the Baskervilles", 1939, "Atmospheric detective mystery", 16905, null], ["Arsenic and Old Lace", 1944, "Spooky mystery comedy", 212, null], ["The 39 Steps", 1935, "Conspiracy mystery", 260, null]];
+  let next = 0;
+  for (const day of days) {
+    if (day.date < '2026-10-10') continue;
+    day.phase = 'Mysteries by candlelight';
+    day.intensity = 2;
+    day.films = day.films.map((old, i) => {
+      const f = remaining[next++];
+      return {title:f[0],year:f[1],kind:f[2],movieWiserId:f[3],rating:f[4],
+        // New film IDs prevent an old slot's watched flag transferring to a replacement.
+        id:day.date+'-mystery-'+i};
+    });
+  }
+
   window.CF_HALLOWEEN={
     title:'Road to Halloween',
+    preferences:{minimumRating:7.3,ratingSource:'MovieWiser',tone:'Mystery, eerie adventure and sci-fi suspense; no slashers or extreme horror',alreadySeen:['Alien','Aliens','Prometheus','The Mummy','The Burrowers',"Widow’s Bay"]},
     start:'2026-09-11',end:'2026-10-31',days,
     christmas:{
       title:'Next chapter: Christmas in Middle-earth',

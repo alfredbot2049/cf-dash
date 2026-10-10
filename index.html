@@ -627,7 +627,7 @@
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
-<script src="halloween.js?v=20260911-road"></script>
+<script src="halloween.js?v=20261010-mystery"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1031,15 +1031,15 @@ let hwOpen=false;
 function hwDone(){return DB.get('halloweenDone',{});}
 function hwToggle(id){const d=hwDone();d[id]=!d[id];DB.set('halloweenDone',d);hwRender();}
 function hwExpand(){hwOpen=!hwOpen;hwRender();}
-function hwPick(f,done){const watched=!!done[f.id],label=`Mark ${esc(f.title)} ${watched?'not watched':'watched'}`;return `<div class="hw-pick ${watched?'done':''}"><button class="hw-check" onclick="hwToggle('${f.id}')" aria-pressed="${watched}" aria-label="${label}">${watched?'✓':''}</button><div><div class="hw-film">${esc(f.title)}</div><div class="hw-meta">${f.year} · ${esc(f.kind)}</div></div></div>`;}
+function hwPick(f,done){const watched=!!done[f.id],label=`Mark ${esc(f.title)} ${watched?'not watched':'watched'}`;return `<div class="hw-pick ${watched?'done':''}">${posterCell({t:f.title,y:f.year,k:'F'})}<button class="hw-check" onclick="hwToggle('${f.id}')" aria-pressed="${watched}" aria-label="${label}">${watched?'✓':''}</button><div><div class="hw-film">${esc(f.title)}</div><div class="hw-meta">${f.year} · ${esc(f.kind)}${f.rating?` · MovieWiser ${f.rating.toFixed(1)}`:''}</div>${f.movieWiserId?`<a class="hw-meta" href="https://moviewiser.com/us/movie/${f.movieWiserId}" target="_blank" rel="noopener">Check MovieWiser rating</a>`:''}</div></div>`;}
 function hwRender(){
   const root=document.getElementById('halloween-road'),road=window.CF_HALLOWEEN;if(!root||!road)return;
   const done=hwDone(),all=road.days.flatMap(d=>d.films),watched=all.filter(f=>done[f.id]).length;
-  const local=new Date(),today=[local.getFullYear(),String(local.getMonth()+1).padStart(2,'0'),String(local.getDate()).padStart(2,'0')].join('-');
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const current=road.days.find(d=>d.date===today)||road.days.find(d=>d.date>today&&!d.films.every(f=>done[f.id]))||road.days.find(d=>!d.films.every(f=>done[f.id]))||road.days.at(-1);
   const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
   const days=hwOpen?`<div class="hw-days">${road.days.map(d=>`<div class="hw-day ${d.date===today?'today':''}"><div class="hw-day-head"><span class="hw-date">${dateLabel(d.date)}</span><span class="hw-phase">${'●'.repeat(d.intensity)} ${esc(d.phase)}</span></div>${d.films.map(f=>hwPick(f,done)).join('')}</div>`).join('')}</div>`:'';
-  root.innerHTML=`<div class="hw-road"><div class="hw-hero"><div class="hw-kicker">11 September → 31 October</div><div class="hw-title">Road to Halloween</div><div class="hw-copy">51 days · 66 films · one every weekday, double features every weekend. It gets darker as Halloween gets closer.</div><div class="hw-progress"><i style="width:${Math.round(watched/all.length*100)}%"></i></div><div class="hw-copy">${watched} of ${all.length} watched</div><div class="hw-now"><div class="hw-now-label">${current.date===today?'Tonight':today<road.start?'Opening night':today>road.end?'Last unwatched night':dateLabel(current.date)}</div>${current.films.map(f=>hwPick(f,done)).join('')}</div><div class="hw-actions"><span class="hw-copy">Four chapters, from Beetlejuice to Halloween.</span><button class="hw-btn" onclick="hwExpand()">${hwOpen?'Hide the road':'See all 51 days'}</button></div></div>${days}<div class="hw-christmas"><b>${esc(road.christmas.title)}</b>${road.christmas.order.map(esc).join(' → ')}</div></div>`;
+  root.innerHTML=`<div class="hw-road"><div class="hw-hero"><div class="hw-kicker">11 September → 31 October</div><div class="hw-title">Road to Halloween</div><div class="hw-copy">51 days · 66 films · one every weekday, double features every weekend. Mystery, eerie adventures and sci-fi suspense, with a touch of scary.</div><div class="hw-progress"><i style="width:${Math.round(watched/all.length*100)}%"></i></div><div class="hw-copy">${watched} of ${all.length} watched</div><div class="hw-now"><div class="hw-now-label">${current.date===today?'Movie of the day':today<road.start?'Opening night':today>road.end?'Last unwatched night':dateLabel(current.date)}</div>${current.films.map(f=>hwPick(f,done)).join('')}</div><div class="hw-actions"><span class="hw-copy">Prefer MovieWiser 7.3+ · remaining ratings to verify.</span><button class="hw-btn" onclick="hwExpand()">${hwOpen?'Hide the road':'See all 51 days'}</button></div></div>${days}<div class="hw-christmas"><b>${esc(road.christmas.title)}</b>${road.christmas.order.map(esc).join(' → ')}</div></div>`;
 }
 const artInflight=new Set();
 function posterSrc(f){

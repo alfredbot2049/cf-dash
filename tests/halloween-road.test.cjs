@@ -13,7 +13,7 @@ for(const day of road.days){
   assert.equal(day.films.length,[0,6].includes(dow)?2:1,day.date);
 }
 assert.equal(road.days[0].films[0].title,'Beetlejuice');
-assert.deepEqual(Array.from(road.days.at(-1).films,f=>f.title),['Halloween',"Trick 'r Treat"]);
+assert.deepEqual(Array.from(road.days.at(-1).films,f=>f.title),['Arsenic and Old Lace','The 39 Steps']);
 assert.deepEqual(Array.from(road.christmas.order),[
   'The Rings of Power · Season 1','The Rings of Power · Season 2','The Lord of the Rings trilogy'
 ]);
@@ -22,3 +22,13 @@ assert.match(html,/id="halloween-road"/);
 assert.match(html,/src="halloween\.js/);
 assert.match(html,/function hwRender\(/);
 console.log('PASS 51-day Road to Halloween, 66 unique films, weekend doubles and Middle-earth handoff');
+
+const future=road.days.filter(d=>d.date>='2026-10-10').flatMap(d=>d.films);
+assert.equal(future.length,29);
+assert.equal(future[0].title,'The Prestige');
+assert.ok(future.every(f=>!['Horror','Slasher','Body horror','Finale'].includes(f.kind)));
+assert.ok(future.every(f=>f.id.includes('-mystery-')));
+assert.equal(road.preferences.minimumRating,7.3);
+assert.match(html,/posterCell\(\{t:f.title/);
+assert.match(html,/Movie of the day/);
+assert.match(html,/Asia\/Kuala_Lumpur/);
