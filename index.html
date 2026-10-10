@@ -182,7 +182,8 @@
   .hw-now-label,.hw-date{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:#bd8c65;font-weight:700}
   .hw-pick{display:flex;gap:10px;align-items:center;padding:8px 0;color:#f3eaf2}
   .hw-pick+.hw-pick{border-top:1px solid rgba(255,255,255,.07)}
-  .hw-check{width:44px;height:44px;flex:0 0 auto;border-radius:12px;border:1px solid #735778;background:transparent;color:#fff;display:grid;place-items:center;padding:0}
+  .hw-check{min-width:94px;min-height:44px;width:auto;flex:0 0 auto;border-radius:12px;border:1px solid #735778;background:transparent;color:#fff;display:inline-grid;place-items:center;padding:0 10px;margin-top:8px;cursor:pointer;touch-action:manipulation}
+  .hw-pick-content{min-width:0}.hw-source{display:block;margin-top:6px}.hw-offers a{display:inline-block;min-height:24px}.hw-check:disabled{opacity:.6;cursor:default}
   .hw-pick.done .hw-check{background:#9c52a6;border-color:#9c52a6}.hw-pick.done .hw-film{text-decoration:line-through;color:#8f8490}
   .hw-film{font-size:14px;font-weight:600;line-height:1.25}.hw-meta{font-size:10.5px;color:#9e929f;margin-top:2px}
   .hw-actions{display:flex;justify-content:space-between;align-items:center;gap:9px;margin-top:12px}
@@ -627,7 +628,8 @@
 <script src="bookmarklet.js"></script>
 <script src="hikes.js"></script>
 <script src="trails.js"></script>
-<script src="halloween.js?v=20261010-mystery"></script>
+<script src="halloween-availability.js?v=20261010-my"></script>
+<script src="halloween.js?v=20261010-my-seen"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1028,18 +1030,29 @@ function renderTiles(){
 /* ================= MOVIES ================= */
 let mvPick=null,mvTab='t';
 let hwOpen=false;
+function hwSeenState(){return DB.get('halloweenSeen',{});}
+function hwAlreadySeen(id){DB.set('halloweenSeen',CF_HALLOWEEN.replaceSeen(hwSeenState(),id));hwRender();}
+function hwUndoSeen(){const state=hwSeenState();if(state.undo)DB.set('halloweenSeen',state.undo);hwRender();}
 function hwDone(){return DB.get('halloweenDone',{});}
 function hwToggle(id){const d=hwDone();d[id]=!d[id];DB.set('halloweenDone',d);hwRender();}
 function hwExpand(){hwOpen=!hwOpen;hwRender();}
-function hwPick(f,done){const watched=!!done[f.id],label=`Mark ${esc(f.title)} ${watched?'not watched':'watched'}`;return `<div class="hw-pick ${watched?'done':''}">${posterCell({t:f.title,y:f.year,k:'F'})}<button class="hw-check" onclick="hwToggle('${f.id}')" aria-pressed="${watched}" aria-label="${label}">${watched?'✓':''}</button><div><div class="hw-film">${esc(f.title)}</div><div class="hw-meta">${f.year} · ${esc(f.kind)}${f.rating?` · MovieWiser ${f.rating.toFixed(1)}`:''}</div>${f.movieWiserId?`<a class="hw-meta" href="https://moviewiser.com/us/movie/${f.movieWiserId}" target="_blank" rel="noopener">Check MovieWiser rating</a>`:''}</div></div>`;}
+function hwPick(f,done,past=false){
+  const watched=!!done[f.id],seen=!!hwSeenState().seen?.[CF_HALLOWEEN.filmKey(f)];
+  return `<div class="hw-pick ${watched?'done':''}">${posterCell({t:f.title,y:f.year,k:'F'})}<div class="hw-pick-content"><div class="hw-film">${esc(f.title)}</div><div class="hw-meta">${f.year} · ${esc(f.kind)}${f.rating?` · MovieWiser ${f.rating.toFixed(1)}`:''}</div>${hwAvailability(f)}<button class="hw-check" onclick="${past?'hwToggle':'hwAlreadySeen'}('${f.id}')" aria-label="${past?'Toggle watched':'Already seen; replace recommendation'}: ${esc(f.title)}" ${!past&&seen?'disabled':''}>${past?(watched?'✓ Watched':'Mark watched'):(seen?'✓ Seen':'Already seen')}</button>${f.movieWiserId?`<a class="hw-meta hw-source" href="https://moviewiser.com/my/movie/${f.movieWiserId}" target="_blank" rel="noopener">MovieWiser · Malaysia</a>`:''}</div></div>`;
+}
+function hwAvailability(f){
+  const info=CF_HALLOWEEN.availability[f.movieWiserId];
+  if(!info?.offers?.length)return '<div class="hw-meta">Malaysia availability unconfirmed</div>';
+  return `<div class="hw-meta">Malaysia · checked ${esc(info.checked)}</div><div class="hw-offers">${info.offers.map(o=>`<a class="hw-meta" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.provider)}${o.type==='Stream'?' · subscription':' · '+esc(o.type.toLowerCase())}</a>`).join(' · ')}</div><a class="hw-meta hw-source" href="${esc(info.source)}" target="_blank" rel="noopener">Availability: TMDB / JustWatch</a>`;
+}
 function hwRender(){
   const root=document.getElementById('halloween-road'),road=window.CF_HALLOWEEN;if(!root||!road)return;
-  const done=hwDone(),all=road.days.flatMap(d=>d.films),watched=all.filter(f=>done[f.id]).length;
+  const done=hwDone(),seenState=hwSeenState(),schedule=road.resolveDays(seenState),all=schedule.flatMap(d=>d.films),watched=all.filter(f=>done[f.id]).length;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const current=road.days.find(d=>d.date===today)||road.days.find(d=>d.date>today&&!d.films.every(f=>done[f.id]))||road.days.find(d=>!d.films.every(f=>done[f.id]))||road.days.at(-1);
+  const current=schedule.find(d=>d.date===today)||schedule.find(d=>d.date>today&&!d.films.every(f=>done[f.id]))||schedule.find(d=>!d.films.every(f=>done[f.id]))||schedule.at(-1);
   const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
-  const days=hwOpen?`<div class="hw-days">${road.days.map(d=>`<div class="hw-day ${d.date===today?'today':''}"><div class="hw-day-head"><span class="hw-date">${dateLabel(d.date)}</span><span class="hw-phase">${'●'.repeat(d.intensity)} ${esc(d.phase)}</span></div>${d.films.map(f=>hwPick(f,done)).join('')}</div>`).join('')}</div>`:'';
-  root.innerHTML=`<div class="hw-road"><div class="hw-hero"><div class="hw-kicker">11 September → 31 October</div><div class="hw-title">Road to Halloween</div><div class="hw-copy">51 days · 66 films · one every weekday, double features every weekend. Mystery, eerie adventures and sci-fi suspense, with a touch of scary.</div><div class="hw-progress"><i style="width:${Math.round(watched/all.length*100)}%"></i></div><div class="hw-copy">${watched} of ${all.length} watched</div><div class="hw-now"><div class="hw-now-label">${current.date===today?'Movie of the day':today<road.start?'Opening night':today>road.end?'Last unwatched night':dateLabel(current.date)}</div>${current.films.map(f=>hwPick(f,done)).join('')}</div><div class="hw-actions"><span class="hw-copy">Prefer MovieWiser 7.3+ · remaining ratings to verify.</span><button class="hw-btn" onclick="hwExpand()">${hwOpen?'Hide the road':'See all 51 days'}</button></div></div>${days}<div class="hw-christmas"><b>${esc(road.christmas.title)}</b>${road.christmas.order.map(esc).join(' → ')}</div></div>`;
+  const days=hwOpen?`<div class="hw-days">${schedule.map(d=>`<div class="hw-day ${d.date===today?'today':''}"><div class="hw-day-head"><span class="hw-date">${dateLabel(d.date)}</span><span class="hw-phase">${'●'.repeat(d.intensity)} ${esc(d.phase)}</span></div>${d.films.map(f=>hwPick(f,done,d.date<today)).join('')}</div>`).join('')}</div>`:'';
+  root.innerHTML=`<div class="hw-road"><div class="hw-hero"><div class="hw-kicker">11 September → 31 October</div><div class="hw-title">Road to Halloween</div><div class="hw-copy">51 days · 66 films · one every weekday, double features every weekend. Mystery, eerie adventures and sci-fi suspense, with a touch of scary.</div><div class="hw-progress"><i style="width:${Math.round(watched/all.length*100)}%"></i></div><div class="hw-copy">${watched} of ${all.length} watched</div><div class="hw-now"><div class="hw-now-label">${current.date===today?'Movie of the day':today<road.start?'Opening night':today>road.end?'Last unwatched night':dateLabel(current.date)}</div>${current.films.map(f=>hwPick(f,done)).join('')}</div>${seenState.exhausted?'<p class="hw-copy" role="status">All curated replacements have been used. Your seen film is saved; no repeat was added.</p>':''}${seenState.undo?'<button class="hw-btn" onclick="hwUndoSeen()">Undo last already seen</button>':''}<div class="hw-actions"><span class="hw-copy">1995 onward · Malaysia · Apple TV, Prime Video, Netflix &amp; HBO Max first. Prefer MovieWiser 7.3+; unverified scores are not shown.</span><button class="hw-btn" onclick="hwExpand()">${hwOpen?'Hide the road':'See all 51 days'}</button></div></div>${days}<div class="hw-christmas"><b>${esc(road.christmas.title)}</b>${road.christmas.order.map(esc).join(' → ')}</div></div>`;
 }
 const artInflight=new Set();
 function posterSrc(f){
