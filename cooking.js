@@ -67,7 +67,7 @@ function ckDetail(id,planId){
 }
 let ckEditId=null;
 function ckComposer(open=true){if(!open&&ckVoice)ckVoice.stop();document.getElementById('ck-composer').hidden=!open;if(open){document.getElementById('ck-composer').scrollIntoView({block:'start'});document.getElementById('ck-input').focus();}else{ckEditId=null;document.getElementById('ck-input').value='';document.getElementById('ck-audio').value='';}}
-function ckEdit(id){const r=recipes().find(r=>r.id===id);if(!r)return;ckEditId=id;document.getElementById('ck-detail').close();ckComposer();document.getElementById('ck-input').value=r.notes||r.title;}
+function ckEdit(id){const r=recipes().find(r=>r.id===id);if(!r)return;ckEditId=id;document.getElementById('ck-detail').close();ckComposer();document.getElementById('ck-input').value=r.notes?.split('\n')[0]===r.title?r.notes:[r.title,r.notes].filter(Boolean).join('\n');}
 function ckStatus(s){document.getElementById('ck-status').textContent=s;}
 function ckDrop(event){event.preventDefault();const box=document.getElementById('ck-input'),text=event.dataTransfer.getData('text/plain')||event.dataTransfer.getData('text/uri-list');if(text)box.value+=(box.value?'\n':'')+text;}
 function ckSlide(id,n){const list=ckPlan(),meal=list.find(p=>p.id===id);if(!meal)return;const day=ckDate(meal.date);day.setDate(day.getDate()+n);const date=ckKeyDate(day);if(!ckDays().includes(date))return;const others=list.filter(p=>p.id!==id&&p.date===date);DB.set('cookingPlan',list.map(p=>p.id===id?{...p,date}:others.includes(p)?{...p,date:meal.date}:p));ckRender();}
@@ -77,7 +77,7 @@ async function ckSave(){
   const list=recipes().slice(),existing=list.find(r=>r.id===ckEditId),id=existing?.id||uid();
   if(audio&&audio.size>20*1024*1024){ckStatus('Choose a voice note smaller than 20 MB. Your text is kept.');return;}if(audio){try{await ckAudioStore(id,audio);}catch(e){ckStatus('The voice note could not be saved on this device. Your text is still here.');return;}}
   const raw=text.match(/https?:\/\/[^\s]+/)?.[0],link=ckSafeLink(raw);
-  const r={...existing,id,title:existing?.title||text.split('\n')[0].slice(0,100),notes:text,link:link||existing?.link||'',ingredients:existing?.ingredients||[],steps:existing?.steps||[]};
+  const r={...existing,id,title:text.split('\n')[0].slice(0,100),notes:text,link:link||existing?.link||'',ingredients:existing?.ingredients||[],steps:existing?.steps||[]};
   const i=list.findIndex(x=>x.id===id);i<0?list.unshift(r):list.splice(i,1,r);DB.set('recipes',list);ckComposer(false);ckStatus('Saved for recipe review.');ckRender();
 }
 function ckAudioChosen(){const file=document.getElementById('ck-audio').files[0];ckStatus(file?'Voice note selected. Save the recipe to keep it on this device.':'');}
