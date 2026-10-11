@@ -378,6 +378,7 @@
   .hm-f input,.hm-f select{width:100%}
   </style>
 <link rel="stylesheet" href="condo.css?v=20260924-kills4">
+<link rel="stylesheet" href="cooking.css?v=20261011">
 </head>
 <body>
 
@@ -514,24 +515,22 @@
 
   <!-- COOKING -->
   <section class="view" id="v-cooking"><div class="pad">
-    <div class="vhead"><h2>Cooking</h2><div class="sub">Drop a TikTok, cook it hands-free step by step.</div></div>
-    <div class="card">
-      <div class="row">
-        <input id="ck-link" placeholder="Paste a TikTok / Reels / YouTube link…" style="flex:3 1 240px">
-        <button class="btn primary" onclick="ckLink()">Extract recipe</button>
-      </div>
-      <div class="note"><b>How it works:</b> paste a link and our extractor pulls the ingredients + steps off the video (no typing). Auto-extract runs through the C&amp;F bot once it's wired — for now the link is saved and you can drop in the steps below. </div>
-    </div>
-    <div class="sectitle">High-protein &amp; healthy — tap to add</div>
-    <div id="ck-suggest"></div>
-    <div class="sectitle">Our recipes</div>
-    <div id="cook-list"></div>
-    <div class="sectitle">Add a recipe by hand</div>
-    <div class="card">
-      <input id="ck-title" placeholder="Recipe name" style="margin-bottom:9px">
-      <textarea id="ck-steps" placeholder="One step per line.&#10;Dice the onion and garlic&#10;Fry until golden&#10;Add the rice and stock"></textarea>
-      <div class="row" style="margin-top:9px;justify-content:flex-end"><button class="btn primary" onclick="ckAdd()">Save recipe</button></div>
-    </div>
+    <header class="ck-heading"><div><div class="ck-eyebrow">A little time in the kitchen</div><h2>What are we cooking?</h2><p>Plan a few meals. Shop for those. Leave room for life.</p></div><button class="btn primary" onclick="ckComposer()" aria-label="Add a recipe">＋ Recipe</button></header>
+    <div id="ck-planner"></div>
+    <section id="ck-composer" class="card" hidden aria-label="Add a recipe">
+      <div class="maptop"><h3>Add something delicious</h3><button class="btn sm" onclick="ckComposer(false)">Close</button></div>
+      <label for="ck-title">Recipe name</label><input id="ck-title" placeholder="What would you like to cook?">
+      <label for="ck-link">Video or recipe link</label><input id="ck-link" type="url" placeholder="TikTok, YouTube, Reels or a recipe website">
+      <label for="ck-ingredients">Ingredients</label><textarea id="ck-ingredients" placeholder="One per line, with quantities if you know them"></textarea>
+      <label for="ck-steps">Steps or your idea</label><textarea id="ck-steps" placeholder="Type a recipe, dictate an idea, or leave notes for later"></textarea>
+      <div class="row"><button class="btn" id="ck-dictate" onclick="ckDictate()">Dictate notes</button><label class="btn ck-audio-label" for="ck-audio">Attach voice note</label><input id="ck-audio" type="file" accept="audio/*" onchange="ckAudioChosen()"><button class="btn primary" onclick="ckSave()">Save recipe</button></div>
+      <p class="note">Links are saved for recipe review. Voice attachments stay on this device; type or dictate details to share them with each other.</p><p id="ck-status" role="status" aria-live="polite"></p>
+    </section>
+    <section class="ck-library"><div class="maptop"><h3>Our recipe shelf</h3><span id="ck-total" class="muted"></span></div>
+      <div class="row"><div class="subtabs" id="ck-filters"></div><input id="ck-search" type="search" placeholder="Find a recipe…" aria-label="Search recipes" oninput="ckShelf()"></div>
+      <div id="cook-list" class="ck-recipes"></div>
+    </section>
+    <dialog id="ck-detail" class="ck-dialog"><div id="ck-detail-body"></div><button class="btn" onclick="document.getElementById('ck-detail').close()">Close</button></dialog>
   </div></section>
 
   <!-- CHECKLIST -->
@@ -1377,32 +1376,8 @@ const CK_SUGGEST=[
  {id:'hp7',title:"Chicken shawarma wrap",kcal:"~42g protein",tag:"High protein",steps:["Toss 400g chicken thigh strips with cumin, paprika, garlic, yoghurt","Marinate 15 min, pan-sear until charred + cooked","Warm wholemeal wraps","Fill with chicken, salad, pickles","Drizzle garlic yoghurt or hummus, roll tight"]},
  {id:'hp8',title:"Lentil & chicken soup",kcal:"~35g protein, high fibre",tag:"Healthy",steps:["Sauté onion, carrot, celery, garlic","Add 1 cup red lentils, diced chicken, cumin","Pour 1.5L stock, simmer 25 min","Season, squeeze lemon, stir in spinach","Blend half for creaminess if you like"]},
 ];
-function recipes(){return DB.get('recipes',SEED);}
-function ckAddSuggest(id){const s=CK_SUGGEST.find(x=>x.id===id);if(!s)return;const l=recipes().slice();if(l.some(r=>r.title===s.title)){go('cooking');return;}l.unshift({id:uid(),title:s.title,steps:s.steps.slice()});DB.set('recipes',l);ckRender();}
-function ckSuggestRender(){
-  const have=new Set(recipes().map(r=>r.title));
-  document.getElementById('ck-suggest').innerHTML='<div class="chips" style="margin-bottom:4px">'+CK_SUGGEST.map(s=>`<button class="sugg" onclick="ckAddSuggest('${s.id}')"><b>${esc(s.title)}</b><span>${esc(s.kcal)} · ${s.steps.length} steps</span>${have.has(s.title)?'<em>✓ added</em>':'<em>+ add</em>'}</button>`).join('')+'</div>';
-}
-function ckRender(){
-  ckSuggestRender();
-  const l=recipes();
-  document.getElementById('cook-list').innerHTML=l.length?l.map(r=>`<div class="item"><div class="top"><span class="nm">${esc(r.title)}</span>${r.link?`<a class="pill" href="${esc(r.link)}" target="_blank">↗ source</a>`:''}<span class="meta" style="margin:0 0 0 4px">${r.steps.length?r.steps.length+' steps':'link only'}</span>${r.steps.length?`<button class="btn sm primary" style="margin-left:auto" onclick="cmOpen('${r.id}')">▷ Cook mode</button>`:'<span style="margin-left:auto"></span>'}${r.id.startsWith('seed')?'':`<button class="xdel" onclick="ckDel('${r.id}')">×</button>`}</div></div>`).join(''):'<div class="empty"><span class="big">🍳</span>No recipes yet — paste a TikTok or add one by hand.</div>';
-}
-function ckLink(){
-  const link=document.getElementById('ck-link').value.trim();if(!link)return;
-  const l=recipes().slice();l.unshift({id:uid(),title:'Recipe from link (add steps)',link,steps:[]});DB.set('recipes',l);
-  document.getElementById('ck-link').value='';ckRender();
-}
-function ckAdd(){
-  const title=document.getElementById('ck-title').value.trim();
-  const steps=document.getElementById('ck-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(!title||!steps.length)return;
-  const l=recipes().slice();l.unshift({id:uid(),title,steps});DB.set('recipes',l);
-  document.getElementById('ck-title').value='';document.getElementById('ck-steps').value='';ckRender();
-}
-function ckDel(id){DB.set('recipes',recipes().filter(r=>r.id!==id));ckRender();}
 let cm={steps:[],i:0,title:''};
-function cmOpen(id){const r=recipes().find(x=>x.id===id);if(!r||!r.steps.length)return;cm={steps:r.steps,i:0,title:r.title};document.getElementById('cookmode').classList.add('show');cmDraw();}
+function cmOpen(id){const r=ckAll().find(x=>x.id===id);if(!r||!r.steps.length)return;cm={steps:r.steps,i:0,title:r.title};document.getElementById('cookmode').classList.add('show');cmDraw();}
 function cmClose(){document.getElementById('cookmode').classList.remove('show');}
 function cmMove(d){if(cm.i===cm.steps.length-1&&d>0){cmClose();return;}cm.i=Math.max(0,Math.min(cm.steps.length-1,cm.i+d));cmDraw();}
 function cmDraw(){
@@ -1646,7 +1621,8 @@ async function boot(){
   if(sent){location.hash='homes';CondoHunting.mode('explore');}
   go(location.hash.replace('#','')||'home');
 }
-boot();
 </script>
+<script src="cooking.js?v=20261011"></script>
+<script>boot();</script>
 </body>
 </html>
