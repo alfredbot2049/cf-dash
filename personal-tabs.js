@@ -1,7 +1,7 @@
 /* Account-scoped navigation preferences; shared content stays in its sections. */
 let ptEditing=false,ptSuppress=false;
 function ptKey(){return cfUser?'tabs-'+cfUser.id:null;}
-function ptPrefs(){const key=ptKey(),p=key?DB.get(key,{}):{};return {order:[...new Set([...(Array.isArray(p.order)?p.order:[]),...NAV.map(n=>n.id)])].filter(id=>NAV.some(n=>n.id===id)),hidden:Array.isArray(p.hidden)?p.hidden:[],labels:p.labels||{}};}
+function ptPrefs(){const key=ptKey(),p=key?DB.get(key,{}):{};return {order:[...new Set([...(!Array.isArray(p.order)||p.order.includes('hub')?[]:['hub']),...(Array.isArray(p.order)?p.order:[]),...NAV.map(n=>n.id)])].filter(id=>NAV.some(n=>n.id===id)),hidden:Array.isArray(p.hidden)?p.hidden:[],labels:p.labels||{}};}
 function ptSave(p){const key=ptKey();if(!key)return;DB.set(key,p);renderTabs(location.hash.slice(1));}
 function ptMove(id,delta){const p=ptPrefs(),i=p.order.indexOf(id),j=i+delta;if(i<0||j<0||j>=p.order.length)return;[p.order[i],p.order[j]]=[p.order[j],p.order[i]];ptSave(p);}
 function ptRename(id,value){const p=ptPrefs();p.labels[id]=value.trim().slice(0,30);ptSave(p);}
