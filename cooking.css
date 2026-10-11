@@ -4,3 +4,5 @@
 @media(max-width:1050px){.ck-days{grid-template-columns:repeat(7,minmax(80px,1fr));overflow-x:auto}.ck-workspace{grid-template-columns:1fr}.ck-recipes{grid-template-columns:repeat(2,minmax(0,1fr))}.ck-day{min-height:140px}.ck-next{max-width:none}}
 @media(max-width:540px){.ck-heading{align-items:flex-start;gap:10px;margin-bottom:24px}.ck-heading .btn{padding:10px}.ck-heading p{font-size:13px}.ck-calendar{padding:16px}.ck-calendar .maptop{align-items:flex-start;gap:10px}.ck-calendar h3{font-size:20px}.ck-days{grid-template-columns:1fr;overflow:visible;gap:0}.ck-day{min-height:74px;display:grid;grid-template-columns:48px 1fr;align-items:center;border-top:1px solid var(--line);padding:12px 0}.ck-day .ck-free{margin:0}.ck-day .ck-date{grid-row:span 2}.ck-day strong{display:block}.ck-recipes{grid-template-columns:1fr}.ck-next{padding:18px}.ck-weeknav .btn{padding:8px}.ck-dialog{padding:20px}}
 @media(prefers-reduced-motion:reduce){.view{animation:none}*{scroll-behavior:auto!important}}
+
+.ck-slide{display:flex;justify-content:space-between;gap:4px}.ck-slide .btn{min-width:44px;min-height:44px}#ck-input{min-height:140px}

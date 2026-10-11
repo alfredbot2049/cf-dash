@@ -378,7 +378,7 @@
   .hm-f input,.hm-f select{width:100%}
   </style>
 <link rel="stylesheet" href="condo.css?v=20260924-kills4">
-<link rel="stylesheet" href="cooking.css?v=20261011">
+<link rel="stylesheet" href="cooking.css?v=20261011b">
 </head>
 <body>
 
@@ -519,10 +519,7 @@
     <div id="ck-planner"></div>
     <section id="ck-composer" class="card" hidden aria-label="Add a recipe">
       <div class="maptop"><h3>Add something delicious</h3><button class="btn sm" onclick="ckComposer(false)">Close</button></div>
-      <label for="ck-title">Recipe name</label><input id="ck-title" placeholder="What would you like to cook?">
-      <label for="ck-link">Video or recipe link</label><input id="ck-link" type="url" placeholder="TikTok, YouTube, Reels or a recipe website">
-      <label for="ck-ingredients">Ingredients</label><textarea id="ck-ingredients" placeholder="One per line, with quantities if you know them"></textarea>
-      <label for="ck-steps">Steps or your idea</label><textarea id="ck-steps" placeholder="Type a recipe, dictate an idea, or leave notes for later"></textarea>
+      <label for="ck-input">What would you like?</label><textarea id="ck-input" placeholder="Type or dictate an idea, paste a recipe or drop a link…" ondragover="event.preventDefault()" ondrop="ckDrop(event)"></textarea>
       <div class="row"><button class="btn" id="ck-dictate" onclick="ckDictate()">Dictate notes</button><label class="btn ck-audio-label" for="ck-audio">Attach voice note</label><input id="ck-audio" type="file" accept="audio/*" onchange="ckAudioChosen()"><button class="btn primary" onclick="ckSave()">Save recipe</button></div>
       <p class="note">Links are saved for recipe review. Voice attachments stay on this device; type or dictate details to share them with each other.</p><p id="ck-status" role="status" aria-live="polite"></p>
     </section>
@@ -1622,7 +1619,7 @@ async function boot(){
   go(location.hash.replace('#','')||'home');
 }
 </script>
-<script src="cooking.js?v=20261011"></script>
+<script src="cooking.js?v=20261011b"></script>
 <script>boot();</script>
 </body>
 </html>
