@@ -378,7 +378,7 @@
   .hm-f input,.hm-f select{width:100%}
   </style>
 <link rel="stylesheet" href="condo.css?v=20260924-kills4">
-<link rel="stylesheet" href="cooking.css?v=20261011c">
+<link rel="stylesheet" href="cooking.css?v=20261011d">
 </head>
 <body>
 
@@ -446,6 +446,7 @@
   <!-- HOMES -->
   <section class="view" id="v-homes"><div class="pad">
     <div class="vhead"><h2>Condo Hunting</h2><div class="sub">Find our next home. The listings, the details, and what we both think.</div></div>
+    <div id="cnf-home-focus"></div>
     <div class="ch-mode"><button data-condo-mode="map" onclick="CondoHunting.mode('map')">Property map</button><button data-condo-mode="comparison" onclick="CondoHunting.mode('comparison')">Review dashboard</button><button data-condo-mode="explore" onclick="CondoHunting.mode('explore')">Explore rentals</button></div><div id="condo-root"></div><div id="hm-legacy" hidden>
     <div class="subtabs" id="hm-subtabs"></div>
     <div class="card" id="hm-filters"></div>
@@ -529,6 +530,9 @@
     </section>
     <dialog id="ck-detail" class="ck-dialog"><div id="ck-detail-body"></div><button class="btn" onclick="document.getElementById('ck-detail').close()">Close</button></dialog>
   </div></section>
+
+  <section class="view" id="v-hub"><div class="pad" id="hub-body"></div></section>
+  <section class="view" id="v-recipe"><div class="pad" id="ck-recipe-page"></div></section>
 
   <!-- CHECKLIST -->
   <section class="view" id="v-check"><div class="pad">
@@ -666,8 +670,8 @@ const LIB=[
 ];
 
 /* ---------- router / nav ---------- */
-const NAV=[{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'homes',ico:'🏠',lbl:'Condo Hunting'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
-const VIEWS=['home',...NAV.map(n=>n.id)];
+const NAV=[{id:'hub',ico:'⌂',lbl:'Hub'},{id:'movies',ico:'🎬',lbl:'Movies'},{id:'week',ico:'📅',lbl:"What's On"},{id:'trips',ico:'🗺️',lbl:'Trips'},{id:'homes',ico:'🏠',lbl:'Condo Hunting'},{id:'cooking',ico:'🍳',lbl:'Cooking'},{id:'check',ico:'✅',lbl:'Checklist'},{id:'bills',ico:'🧾',lbl:'Bills'},{id:'sport',ico:'🏃',lbl:'Sport'}];
+const VIEWS=['home','recipe',...NAV.map(n=>n.id)];
 function renderTabs(cur){
   document.getElementById('tabs').innerHTML=NAV.map(n=>`<button class="tab ${cur===n.id?'on':''}" onclick="go('${n.id}')"><span class="d">${n.ico}</span>${n.lbl}</button>`).join('');
 }
@@ -1616,11 +1620,12 @@ async function boot(){
   let sent=false;
   try{sent=!!hmImport();}catch(e){}
   if(sent){location.hash='homes';CondoHunting.mode('explore');}
-  go(location.hash.replace('#','')||'home');
+  go(location.hash.replace('#','')||'hub');
 }
 </script>
-<script src="cooking.js?v=20261011b"></script>
-<script src="personal-tabs.js?v=20261011"></script>
+<script src="cooking.js?v=20261011e"></script>
+<script src="personal-tabs.js?v=20261011b"></script>
+<script src="cooking-experience.js?v=20261011a"></script>
 <script>boot();</script>
 </body>
 </html>
