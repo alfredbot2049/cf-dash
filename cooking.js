@@ -19,7 +19,7 @@ function ckAll(){
 function ckIngredients(r){return Array.isArray(r.ingredients)?r.ingredients:[];}
 function ckKeyDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function ckDate(s){return new Date(s+'T12:00:00');}
-function ckMonday(){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+7*ckWeekOffset);return d;}
+function ckMonday(){const d=new Date();d.setHours(12,0,0,0);return d;}
 function ckDays(){const d=ckMonday();return Array.from({length:7},(_,i)=>{const x=new Date(d);x.setDate(x.getDate()+i);return ckKeyDate(x);});}
 function ckPlan(){return DB.get('cookingPlan',[]);}
 function ckArg(id){return esc(JSON.stringify(String(id)));}
@@ -35,7 +35,7 @@ function ckRender(){
   const root=document.getElementById('ck-planner');if(!root)return;
   const days=ckDays(),plan=ckPlan(),today=ckKeyDate(new Date());
   const next=plan.filter(p=>!p.done&&p.date>=today&&ckFind(p.recipeId)).sort((a,b)=>a.date.localeCompare(b.date))[0];
-  root.innerHTML=`<div class="ck-workspace"><section class="ck-calendar" aria-label="Weekly meal calendar"><div class="maptop"><div><h3>${ckWeekOffset===0?'This week':ckWeekOffset===1?'Next week':'Your week'}</h3><span class="ck-small">${ckDate(days[0]).toLocaleDateString('en',{day:'numeric',month:'short'})} – ${ckDate(days[6]).toLocaleDateString('en',{day:'numeric',month:'short'})}</span></div><div class="ck-weeknav">${'<button class="btn sm" aria-label="Previous week" onclick="ckWeek(-1)">←</button>'}${ckAction('ckWeekOffset=0;ckRender()','Today')}${'<button class="btn sm" aria-label="Next week" onclick="ckWeek(1)">→</button>'}</div></div><div class="ck-days">${days.map(d=>`<div class="ck-day ${d===today?'today':''}"><div class="ck-date">${ckDate(d).toLocaleDateString('en',{weekday:'short'})}<strong>${ckDate(d).getDate()}</strong></div>${plan.filter(p=>p.date===d).map(p=>{const r=ckFind(p.recipeId);return r?ckAction(`ckDetail(${ckArg(r.id)},${ckArg(p.id)})`,`${p.done?'✓ ':''}${esc(r.title)}`,'ck-meal'):'';}).join('')||'<span class="ck-free">Leave it open</span>'}</div>`).join('')}</div><p class="ck-small">Choose a day from any recipe below. Move or skip meals whenever you like.</p></section><aside class="ck-next" aria-label="Next meal and groceries">${ckNext(next)}${ckShopping()}</aside></div>`;
+  root.innerHTML=`<div class="ck-workspace"><section class="ck-calendar" aria-label="Weekly meal calendar"><div class="maptop"><div><h3>Next 7 days</h3><span class="ck-small">${ckDate(days[0]).toLocaleDateString('en',{day:'numeric',month:'short'})} – ${ckDate(days[6]).toLocaleDateString('en',{day:'numeric',month:'short'})}</span></div></div><div class="ck-days">${days.map(d=>`<div class="ck-day ${d===today?'today':''}"><div class="ck-date">${ckDate(d).toLocaleDateString('en',{weekday:'short'})}<strong>${ckDate(d).getDate()}</strong></div>${plan.filter(p=>p.date===d).map(p=>{const r=ckFind(p.recipeId);return r?ckAction(`ckDetail(${ckArg(r.id)},${ckArg(p.id)})`,`${p.done?'✓ ':''}${esc(r.title)}`,'ck-meal')+`<div class="ck-slide">${[-1,1].map(n=>ckAction(`ckSlide(${ckArg(p.id)},${n})`,n<0?'←':'→','btn sm')).join('')}</div>`:'';}).join('')||'<span class="ck-free">Leave it open</span>'}</div>`).join('')}</div><p class="ck-small">Use the arrows to move meals one day, swapping when the next day has a meal.</p></section><aside class="ck-next" aria-label="Next meal and groceries">${ckNext(next)}${ckShopping()}</aside></div>`;
   document.getElementById('ck-total').textContent=ckAll().length+' recipes';
   document.getElementById('ck-filters').innerHTML=[['all','All recipes'],['protein','High protein'],['saved','Saved by us']].map(([id,label])=>ckAction(`ckFilter='${id}';ckRender()`,label,'btn sm '+(ckFilter===id?'primary':''))).join('');
   ckShelf();
@@ -66,15 +66,19 @@ function ckDetail(id,planId){
   if(!dlg.open)dlg.showModal();ckPlayAudio(id);
 }
 let ckEditId=null;
-function ckComposer(open=true){if(!open&&ckVoice)ckVoice.stop();document.getElementById('ck-composer').hidden=!open;if(open){document.getElementById('ck-composer').scrollIntoView({block:'start'});document.getElementById('ck-title').focus();}else{ckEditId=null;['ck-title','ck-link','ck-ingredients','ck-steps'].forEach(id=>document.getElementById(id).value='');document.getElementById('ck-audio').value='';}}
-function ckEdit(id){const r=recipes().find(r=>r.id===id);if(!r)return;ckEditId=id;document.getElementById('ck-detail').close();ckComposer();document.getElementById('ck-title').value=r.title;document.getElementById('ck-link').value=r.link||'';document.getElementById('ck-ingredients').value=ckIngredients(r).join('\n');document.getElementById('ck-steps').value=(r.steps||[]).join('\n');}
+function ckComposer(open=true){if(!open&&ckVoice)ckVoice.stop();document.getElementById('ck-composer').hidden=!open;if(open){document.getElementById('ck-composer').scrollIntoView({block:'start'});document.getElementById('ck-input').focus();}else{ckEditId=null;document.getElementById('ck-input').value='';document.getElementById('ck-audio').value='';}}
+function ckEdit(id){const r=recipes().find(r=>r.id===id);if(!r)return;ckEditId=id;document.getElementById('ck-detail').close();ckComposer();document.getElementById('ck-input').value=r.notes?.split('\n')[0]===r.title?r.notes:[r.title,r.notes].filter(Boolean).join('\n');}
 function ckStatus(s){document.getElementById('ck-status').textContent=s;}
+function ckDrop(event){event.preventDefault();const box=document.getElementById('ck-input'),text=event.dataTransfer.getData('text/plain')||event.dataTransfer.getData('text/uri-list');if(text)box.value+=(box.value?'\n':'')+text;}
+function ckSlide(id,n){const list=ckPlan(),meal=list.find(p=>p.id===id);if(!meal)return;const day=ckDate(meal.date);day.setDate(day.getDate()+n);const date=ckKeyDate(day);if(!ckDays().includes(date))return;const others=list.filter(p=>p.id!==id&&p.date===date);DB.set('cookingPlan',list.map(p=>p.id===id?{...p,date}:others.includes(p)?{...p,date:meal.date}:p));ckRender();}
 async function ckSave(){
-  const title=document.getElementById('ck-title').value.trim(),raw=document.getElementById('ck-link').value.trim(),link=ckSafeLink(raw),audio=document.getElementById('ck-audio').files[0];
-  if(!title){ckStatus('Give the recipe a name first.');return;}if(raw&&!link){ckStatus('Use a complete http or https link.');return;}
-  const lines=id=>document.getElementById(id).value.split('\n').map(s=>s.trim()).filter(Boolean),list=recipes().slice(),existing=list.find(r=>r.id===ckEditId),id=existing?.id||uid();
+  const text=document.getElementById('ck-input').value.trim(),audio=document.getElementById('ck-audio').files[0];
+  if(!text){ckStatus('Type, dictate or paste an idea first.');return;}
+  const list=recipes().slice(),existing=list.find(r=>r.id===ckEditId),id=existing?.id||uid();
   if(audio&&audio.size>20*1024*1024){ckStatus('Choose a voice note smaller than 20 MB. Your text is kept.');return;}if(audio){try{await ckAudioStore(id,audio);}catch(e){ckStatus('The voice note could not be saved on this device. Your text is still here.');return;}}
-  const r={...existing,id,title,link:link||'',ingredients:lines('ck-ingredients'),steps:lines('ck-steps')};if(existing&&JSON.stringify(existing.ingredients||[])!==JSON.stringify(r.ingredients)){for(const key of ['cookingPantry','cookingBought']){const state=DB.get(key,{}),prefixes=key==='cookingPantry'?[id+':']:ckPlan().filter(p=>p.recipeId===id).map(p=>p.id+':');Object.keys(state).forEach(k=>{if(prefixes.some(prefix=>k.startsWith(prefix)))delete state[k];});DB.set(key,state);}}const i=list.findIndex(x=>x.id===id);i<0?list.unshift(r):list.splice(i,1,r);DB.set('recipes',list);ckComposer(false);ckStatus('Recipe saved.');ckRender();
+  const raw=text.match(/https?:\/\/[^\s]+/)?.[0],link=ckSafeLink(raw);
+  const r={...existing,id,title:text.split('\n')[0].slice(0,100),notes:text,link:link||existing?.link||'',ingredients:existing?.ingredients||[],steps:existing?.steps||[]};
+  const i=list.findIndex(x=>x.id===id);i<0?list.unshift(r):list.splice(i,1,r);DB.set('recipes',list);ckComposer(false);ckStatus('Saved for recipe review.');ckRender();
 }
 function ckAudioChosen(){const file=document.getElementById('ck-audio').files[0];ckStatus(file?'Voice note selected. Save the recipe to keep it on this device.':'');}
 function ckAudioDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cf-cooking-audio',1);req.onupgradeneeded=()=>req.result.createObjectStore('notes');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
@@ -84,7 +88,7 @@ function ckDictate(){
   if(ckVoice){ckVoice.stop();return;}const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Recognition){ckStatus('Dictation is not available in this browser. Use your keyboard microphone, type, or attach a voice note.');return;}
   ckVoice=new Recognition();ckVoice.lang='en-US';ckVoice.continuous=true;ckVoice.interimResults=false;
-  ckVoice.onresult=e=>{const box=document.getElementById('ck-steps');for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)box.value+=(box.value?'\n':'')+e.results[i][0].transcript;};
+  ckVoice.onresult=e=>{const box=document.getElementById('ck-input');for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)box.value+=(box.value?'\n':'')+e.results[i][0].transcript;};
   ckVoice.onerror=()=>ckStatus('Dictation stopped. Check microphone permission or use typed notes.');ckVoice.onend=()=>{ckVoice=null;document.getElementById('ck-dictate').textContent='Dictate notes';};
   try{ckVoice.start();document.getElementById('ck-dictate').textContent='Stop dictation';ckStatus('Listening. Speak your recipe notes, then stop and review before saving.');}catch{ckVoice=null;ckStatus('Could not start dictation. Your typed notes are kept.');}
 }
