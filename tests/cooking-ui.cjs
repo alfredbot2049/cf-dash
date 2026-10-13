@@ -7,10 +7,18 @@ const root=path.resolve(__dirname,'..');
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port+'/';
  const browser=await chromium.launch({headless:true});
  try{
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',route=>route.request().url().startsWith(base)?route.continue():route.abort());
  await page.goto(base+'#cooking');await page.evaluate(()=>{setGate(false);cfUser={id:'test-f'};const days=ckDays();DB.set('recipes',[{id:'soup',title:'Chicken wonton broth',ingredients:['300 g chicken','1 L stock'],steps:['Prepare the filling.','Simmer until cooked.','Serve hot.'],category:['Soup & broth','Chinese','Chicken'],link:'https://vm.tiktok.com/example/',videoId:'7554689330892082487',image:'assets/food/soup.webp'},{id:'fish',title:'Salmon rice',ingredients:['2 salmon fillets'],steps:['Cook fish.'],category:['Fish'],image:'assets/food/salmon.webp'}]);DB.set('cookingPlan',[{id:'meal-a',recipeId:'soup',date:days[0],done:false},{id:'meal-b',recipeId:'fish',date:days[1],done:false},{id:'outing',kind:'event',title:'Dinner out',date:days[3],done:false}]);DB.set('hubTasks',[{id:'gift',text:'Birthday gift',done:false}]);go('cooking');});
  assert.equal(await page.locator('.ck-day').count(),7);assert.equal(await page.evaluate(()=>ckDays()[0]),await page.evaluate(()=>ckKeyDate(new Date())));
+ for(const width of [1440,768,390]){
+ await page.setViewportSize({width,height:1000});
+ const boxes=await page.locator('.ck-planned').evaluateAll(nodes=>nodes.map(n=>({image:n.querySelector('.ck-meal').firstElementChild.getBoundingClientRect().height,arrow:n.querySelector('.ck-slide').getBoundingClientRect().y,button:n.querySelector('.ck-slide button').getBoundingClientRect().height})));
+ assert.ok(boxes.every(b=>b.image===112&&b.button===44),'consistent recipe and outing geometry at '+width);
+ assert.ok(Math.max(...boxes.map(b=>b.arrow))-Math.min(...boxes.map(b=>b.arrow))<1,'aligned arrows at '+width);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'calendar page overflow at '+width);
+ }
+ await page.setViewportSize({width:1440,height:1000});
  const initial=await page.evaluate(()=>recipes().length);await page.getByRole('button',{name:'Soup & broth',exact:true}).click();assert.equal(await page.locator('.ck-recipe').filter({hasText:'Chicken wonton broth'}).count(),1);
  await page.locator('.ck-recipe').filter({hasText:'Chicken wonton broth'}).getByRole('button',{name:'View recipe →',exact:true}).click();assert.equal(await page.evaluate(()=>recipes().length),initial);assert.equal(await page.locator('#v-recipe').evaluate(el=>el.classList.contains('active')),true);assert.equal(await page.locator('#ck-detail').isVisible(),false);
  assert.match(page.url(),/#recipe\/soup/);assert.equal(await page.locator('#ck-recipe-page h1').textContent(),'Chicken wonton broth');assert.match(await page.locator('#ck-recipe-page iframe').getAttribute('src'),/player\/v1\/7554689330892082487/);
