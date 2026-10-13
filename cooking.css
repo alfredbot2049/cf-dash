@@ -18,3 +18,14 @@
 
 .ck-recipe-main a:not(.btn){color:var(--gold)}
 @media(max-width:650px){.ck-is-cooking .ck-recipe-hero{display:none}.ck-is-cooking .ck-recipe-main{display:flex;flex-direction:column;margin-top:0;padding-top:0;border:0}.ck-is-cooking .ck-recipe-main>section:first-child{display:none}.ck-is-cooking .ck-recipe-main>aside{order:-1;position:sticky;top:108px;z-index:5;background:var(--bg);border-bottom:1px solid var(--line2);padding-bottom:10px}.ck-is-cooking .ck-source h3,.ck-is-cooking .ck-source .ck-small{display:none}.ck-is-cooking .ck-source iframe{height:230px;aspect-ratio:auto;max-width:none;margin:0 0 8px}.ck-is-cooking #ck-method-panel{scroll-margin-top:400px}.ck-is-cooking .ck-current-step{min-height:100px}.ck-is-cooking .ck-page-top{margin-bottom:14px}}
+
+/* Give recipes and outings the same weekly tile and control geometry. */
+.ck-visual-calendar .ck-planned{display:flex;flex-direction:column;gap:8px}
+.ck-visual-calendar .ck-meal{display:grid;grid-template-rows:112px minmax(84px,auto);gap:10px;text-align:left}
+.ck-visual-calendar .ck-meal img,.ck-visual-calendar .ck-outing{box-sizing:border-box;width:100%;height:112px;min-height:0;aspect-ratio:auto;margin:0;border-radius:8px}
+.ck-visual-calendar .ck-outing{display:flex;align-items:center;justify-content:center;padding:12px;font-size:14px;text-align:center}
+.ck-visual-calendar .ck-meal>span:last-child{padding:0;line-height:1.5;font-size:14px}
+.ck-visual-calendar .ck-slide{margin:0;gap:8px}
+.ck-visual-calendar .ck-slide .btn{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;height:44px;padding:0;text-align:center}
+.ck-visual-calendar .ck-date{min-height:50px}
+.ck-visual-calendar .ck-day{justify-content:flex-start;gap:12px}
