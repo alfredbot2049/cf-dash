@@ -17,6 +17,13 @@
 .cnf-home-focus{margin:0 0 30px;border-top:0;padding-top:0}.cnf-home-focus .hub-ideas{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:650px){.cnf-home-focus .hub-ideas{grid-template-columns:1fr}}
 
 .ck-recipe-main a:not(.btn){color:var(--gold)}
+
+/* App-generated weekly suggestions: present on every empty day, visibly a suggestion until accepted. */
+.ck-visual-calendar .ck-suggested{position:relative}
+.ck-visual-calendar .ck-suggested .ck-meal img{border:1px dashed var(--line2);filter:saturate(.9)}
+.ck-suggest-tag{position:absolute;top:6px;left:6px;z-index:1;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:var(--bg);padding:2px 7px;border-radius:999px}
+.ck-visual-calendar .ck-suggested .ck-slide .btn.primary{flex:2}
+.hub-meal.hub-suggested{opacity:.7}.hub-meal.hub-suggested small{color:var(--gold)}
 @media(max-width:650px){.ck-is-cooking .ck-recipe-hero{display:none}.ck-is-cooking .ck-recipe-main{display:flex;flex-direction:column;margin-top:0;padding-top:0;border:0}.ck-is-cooking .ck-recipe-main>section:first-child{display:none}.ck-is-cooking .ck-recipe-main>aside{order:-1;position:sticky;top:108px;z-index:5;background:var(--bg);border-bottom:1px solid var(--line2);padding-bottom:10px}.ck-is-cooking .ck-source h3,.ck-is-cooking .ck-source .ck-small{display:none}.ck-is-cooking .ck-source iframe{height:230px;aspect-ratio:auto;max-width:none;margin:0 0 8px}.ck-is-cooking #ck-method-panel{scroll-margin-top:400px}.ck-is-cooking .ck-current-step{min-height:100px}.ck-is-cooking .ck-page-top{margin-bottom:14px}}
 
 /* Give recipes and outings the same weekly tile and control geometry. */

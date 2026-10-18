@@ -35,6 +35,25 @@ const root=path.resolve(__dirname,'..');
 
  await page.evaluate(()=>ckDetail('soup'));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'recipe mobile overflow');await page.screenshot({path:path.resolve(root,'../cooking-sources/recipe-mobile.png'),fullPage:true});
  await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.resolve(root,'../cooking-sources/recipe-desktop.png'),fullPage:true});await page.evaluate(()=>go('cooking'));await page.screenshot({path:path.resolve(root,'../cooking-sources/cooking-visual-desktop.png'),fullPage:true});
- assert.deepEqual(errors,[]);console.log('PASS: rolling calendar, recipe routes/reload, source video, steps without video reload, timer, pantry persistence, actual hold-drag swap, unified input, hub tasks, account tabs and mobile overflow');
+ // Cooking brief: photos match the dish type, and empty days always carry an app-generated suggestion.
+ await page.setViewportSize({width:1440,height:1000});
+ await page.evaluate(()=>{const days=ckDays();DB.set('recipes',[
+  {id:'r-soup',title:'Beef pho broth',category:['Soup & broth']},
+  {id:'r-beef',title:'Garlic butter steak',category:['Beef']},
+  {id:'r-chx',title:'Honey chicken',category:['Chicken']},
+  {id:'r-fish',title:'Teriyaki salmon',category:['Fish']},
+  {id:'r-pasta',title:'Creamy spaghetti',category:['Vegetarian']},
+  {id:'r-lamb',title:'Lamb pasta with tomato sauce',category:['Lamb']},
+  {id:'r-exp',title:'Steak sandwich',category:['Beef'],image:'https://p16-sign.tiktokcdn-us.com/x.jpeg?x-expires=1700000000&sig=a'}
+ ]);DB.set('cookingPlan',[{id:'m1',recipeId:'r-soup',date:days[0],done:false}]);DB.set('cookingSuggestNudge',{});go('cooking');});
+ assert.deepEqual(await page.evaluate(()=>['r-soup','r-beef','r-chx','r-fish','r-pasta','r-lamb'].map(id=>ckFallback(ckFind(id)).replace(/.*\//,'').replace('.webp',''))),['soup','steak','chicken','salmon','lamb-pasta','lamb-pasta'],'fallback photos match dish type');
+ assert.equal(await page.evaluate(()=>ckPhoto(ckFind('r-exp'))),'assets/food/steak.webp','expired tiktok image uses the category photo, not the dead url');
+ assert.ok(await page.locator('.ck-suggested').count()>=5,'empty days always carry an app-generated suggestion');
+ assert.equal(await page.evaluate(()=>!!document.querySelector('.ck-day[data-date="'+ckDays()[0]+'"] .ck-suggested')),false,'a day with a real meal is not overwritten by a suggestion');
+ const beforeSuggest=await page.evaluate(()=>ckPlan().length);
+ await page.locator('.ck-suggested').first().getByRole('button',{name:'Add',exact:true}).click();
+ assert.equal(await page.evaluate(()=>ckPlan().length),beforeSuggest+1,'accepting a suggestion adds it to the plan');
+
+ assert.deepEqual(errors,[]);console.log('PASS: rolling calendar, recipe routes/reload, source video, steps without video reload, timer, pantry persistence, actual hold-drag swap, unified input, hub tasks, account tabs, mobile overflow, dish-matched photos and auto weekly suggestions');
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exit(1);});
