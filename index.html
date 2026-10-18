@@ -309,6 +309,15 @@
   /* login wall: hide the app itself, keep the sign-in modal visible */
   body.gated .wrap,body.gated .nav{display:none!important}
   body.gated .modal-wrap#authbox .btn.ghost{display:none}
+  /* while we check for a saved session: hide the app AND the sign-in box, so a
+     returning signed-in user never sees the login wall flash before auto-login */
+  #boot-splash{position:fixed;inset:0;z-index:65;display:none;align-items:center;justify-content:center;background:var(--bg)}
+  body.checking #boot-splash{display:flex}
+  body.checking .modal-wrap#authbox{display:none!important}
+  #boot-splash .bs-mark{font-family:'Fraunces',serif;font-weight:700;font-size:30px;letter-spacing:.01em;color:var(--ink);animation:bsPulse 1.15s ease-in-out infinite}
+  #boot-splash .bs-mark .a{color:#f0b74e;font-style:italic;padding:0 3px}
+  @keyframes bsPulse{0%,100%{opacity:.3}50%{opacity:.85}}
+  @media (prefers-reduced-motion:reduce){#boot-splash .bs-mark{animation:none;opacity:.7}}
   .erow{display:flex;gap:12px;align-items:center;cursor:pointer}
   .ethumb{flex:0 0 52px;height:52px;border-radius:9px;overflow:hidden;background:var(--bg)}
   .ethumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -381,6 +390,8 @@
 <link rel="stylesheet" href="cooking.css?v=20261018a">
 </head>
 <body>
+
+<div id="boot-splash" aria-hidden="true"><div class="bs-mark">C<span class="a">&amp;</span>F</div></div>
 
 <div class="nav">
   <div class="bar">
@@ -781,6 +792,8 @@ async function changePassword(){
 // by Supabase row security, which returns nothing without a valid session.
 // Real edge-level blocking would mean moving off GitHub Pages.
 function setGate(on){
+  // Leaving the "checking" splash state the moment we know the real answer.
+  document.body.classList.remove('checking');
   document.body.classList.toggle('gated',on);
   if(on)document.getElementById('authbox').classList.add('show');
   else document.getElementById('authbox').classList.remove('show');
@@ -791,15 +804,20 @@ async function sbBoot(){
   // back to the old open behaviour rather than locking them out of their own
   // app with no way in.
   if(!window.CF_SB||!window.supabase){setGate(false);return;}
-  setGate(true);
+  // Hide the app while we look for a saved session, but do NOT show the sign-in
+  // box yet. A returning signed-in user should never watch the login wall
+  // appear and then disappear; show only the neutral splash during the check,
+  // and reveal the login wall only once we know there is no session to restore.
+  document.body.classList.add('gated','checking');
   try{sb=window.supabase.createClient(CF_SB.url,CF_SB.anon,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     const {data,error}=await sb.auth.getSession();if(error)throw error;
     if(data&&data.session){await startSession(data.session.user);}
+    else{setGate(true);}
     sb.auth.onAuthStateChange((event,session)=>{
       if(event==='SIGNED_IN'&&session&&(!cfUser||cfUser.id!==session.user.id))setTimeout(()=>startSession(session.user),0);
       if(event==='SIGNED_OUT'&&cfUser){closeSettings();cfUser=null;renderAcct();setGate(true);}
     });
-  }catch(e){/* stay gated: a failed check must not open the door */}
+  }catch(e){setGate(true);/* a failed check must not open the door */}
 }
 
 
